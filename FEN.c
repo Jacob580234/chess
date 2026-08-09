@@ -59,6 +59,7 @@ bool stateIsValid(gameState_s* state) {
     if (state->fiftyMoveRule > 100) return false;
 
     // TODO: king may not be in check on opponents turn
+    return true;
 
 }
 
@@ -91,12 +92,19 @@ bool parsePosition(char* position, gameState_s* state) {
 
     }
     if(currentSquare != H1 + 1) return false;
+
+    for (piece piece = pawn; piece <= king; piece++) {
+        state->piecesForSide[white] |= state->bitboard[white][piece];
+        state->piecesForSide[black] |= state->bitboard[black][piece];
+    }
+    state->allPieces = state->piecesForSide[white] | state->piecesForSide[black];
+
     return true;
 }
 
 
 bool parseTurn(const char turn, gameState_s* state) {
-    if (turn == 'w')      state->playerToMove = white;
+    if      (turn == 'w') state->playerToMove = white;
     else if (turn == 'b') state->playerToMove = black;
     else return false;
     return true;
@@ -135,22 +143,21 @@ void parseFEN(char* FEN, gameState_s* state) {
     char position[72], turn, castling[5], enPassant[3], halfMoves[4], fullMoves[5]; // fullMoves unused atp
 
     int parsedCount = sscanf(FEN, "%s %c %s %s %s %s", position, &turn, castling, enPassant, halfMoves, fullMoves);
-    if (parsedCount != 6) goto invalidFormatting;
+    if (parsedCount != 6) goto invalid;
 
-    memset(state->bitboard, 0, sizeof(state->bitboard)); // clear bitboards
+    memset(state->bitboard, 0, sizeof(state->bitboard) + sizeof(state->piecesForSide) + sizeof(state->allPieces)); // clear bitboards
 
-    if (!parsePosition(position, state))    goto invalidFormatting;
-    if (!parseTurn(turn, state))            goto invalidFormatting;
-    if (!parseCastling(castling, state))    goto invalidFormatting;
-    if (!parseEnPassant(enPassant, state))  goto invalidFormatting;
-    if (!parseHalfMoves(halfMoves, state))  goto invalidFormatting;
-    if (!kingIsValid(state->bitboard[white][king]) || !kingIsValid(state->bitboard[black][king]))
-        THROW_EXCEPTION;
+    if (!parsePosition(position, state))    goto invalid;
+    if (!parseTurn(turn, state))            goto invalid;
+    if (!parseCastling(castling, state))    goto invalid;
+    if (!parseEnPassant(enPassant, state))  goto invalid;
+    if (!parseHalfMoves(halfMoves, state))  goto invalid;
 
+    if(!stateIsValid(state))                goto invalid;
 
     return;
 
-    invalidFormatting:
+    invalid:
         printf("Invalid FEN string\n");
         exit(EXIT_FAILURE);
 }

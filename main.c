@@ -26,8 +26,8 @@
  */
 
 
-uint64_t inline set(const int index, uint64_t* bitboard) {
-    return *bitboard |= (1ULL << index);
+uint64_t inline set(const int index, uint64_t* bitboard) { // void?
+    return *bitboard |= BIT(index);
 }
 
 bool inline read(const int index, const uint64_t bitboard) {
@@ -35,7 +35,7 @@ bool inline read(const int index, const uint64_t bitboard) {
 }
 
 uint64_t inline clear (const int index, uint64_t* bitboard) {
-    return *bitboard &= ~(1ULL << index);
+    return *bitboard &= ~BIT(index);
 }
 
 uint64_t inline getAllPiecesForSide(side side, gameState_s* state) { // perhaps have a single function updating bitboard and piece array
@@ -61,8 +61,8 @@ square getIndexFromInput(char notation[]) {
 
 uint64_t computeCastlingBitboard(gameState_s* state) { // state->castlingRights[white][queen] ?? hasMoved is needed
 
-    const int sideOffset   = state->playerToMove == white ?  0 : 3;
-    const int kingStartPos = state->playerToMove == white ? 60 : 4;
+    const int sideOffset      = state->playerToMove == white ?  0 : 3;
+    const square kingStartPos = state->playerToMove == white ? E1 : E8;
 
     if(read(0b000010 << sideOffset, state->castlingRights)) // king has moved --> no castling
         return 0;
@@ -101,14 +101,11 @@ int main(int argc, char** argv) {
         const square startSquare = getIndexFromInput(startInput);
         const square endSquare = getIndexFromInput(endInput);
 
-        // =================== bool isOwnPiece(...)
-        uint64_t mask = 0;
         piece piece;
-        if (startSquare == invalid || endSquare == invalid || !(state.bitboard[state.playerToMove][piece = state.pieceLookup[startSquare]] & set(startSquare, &mask))) {
+        if (startSquare == invalid || endSquare == invalid || !(state.bitboard[state.playerToMove][piece = state.pieceLookup[startSquare]] & BIT(startSquare))) {
             strcpy(afterTurnMsg, "Invalid move.");
             continue;
         }
-        // ===================== if(!isOwnPiece) { strcpy... continue... }
 
         // streamline above and below
         uint64_t map;

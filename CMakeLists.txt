@@ -10,4 +10,6 @@ add_executable(chess_v2 main.c
         print.h
         FEN.c
         FEN.h
-        main.h)
+        main.h
+        move.c
+        move.h)

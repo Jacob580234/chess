@@ -7,6 +7,7 @@
 #define FILES 8
 #define RANKS 8
 #define NUM_SQUARES 64
+#define BIT(n) (1ULL << (n))
 #define THROW_EXCEPTION do {                                                                                     \
                             printf("\n\nException from %s, line %d in %s\n", __FILE_NAME__, __LINE__, __func__); \
                             exit(EXIT_FAILURE);                                                                  \
@@ -27,8 +28,10 @@ typedef enum: int { invalid = -1,
 
 typedef struct {
     uint64_t bitboard[2][NUM_PIECE_TYPES];
-    uint64_t allPieces[2]; // all pieces of a certain color. used to check blocking / capturing. Subject for removal
+    uint64_t piecesForSide[2]; // all pieces of a certain color. used to check blocking / capturing. Subject for removal
+    uint64_t allPieces;
     piece pieceLookup[NUM_SQUARES];
+    uint8_t kingIndex[2];
 
     side playerToMove : 1; // bit fields serve no purpose and are purely for semantics (also subject for removal due to "side" enum constraint)
     uint8_t castlingRights : 6; // inadequate on its own; helper function to compute castling rights needed

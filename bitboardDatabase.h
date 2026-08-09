@@ -8,9 +8,11 @@ typedef struct {
     uint64_t king[NUM_SQUARES];
 } attackMap_s;
 
+void initAttackMaps(attackMap_s* attackMap);
 void initKingBitboards(uint64_t* bitboard);
 void initKnightBitboards(uint64_t* bitboard);
 void initPawnBitboards(uint64_t bitboard[][NUM_SQUARES]);
-void initAttackMaps(attackMap_s* attackMap);
+// void initPawnMoveBitboards(uint64_t bitboard[][NUM_SQUARES]);
+// void initPawnAttackBitboards(uint64_t bitboard[][NUM_SQUARES]);
 
 #endif //CHESS_V2_BITBOARDDATABASE_H

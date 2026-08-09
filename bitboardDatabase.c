@@ -1,8 +1,10 @@
 #include <stdint.h>
 #include "main.h"
 #include "bitboardDatabase.h"
+#include "print.h"
 
 void initAttackMaps(attackMap_s* attackMap) {
+    initPawnBitboards(attackMap->pawn);
     initPawnBitboards(attackMap->pawn);
     initKnightBitboards(attackMap->knight);
     initKingBitboards(attackMap->king);
@@ -68,9 +70,24 @@ void initKnightBitboards(uint64_t bitboard[]) {
     }
 }
 
+/*
+void initPawnBitboards(uint64_t bitboard[][2][NUM_SQUARES]) {
+    initPawnAttackBitboards(bitboard[0]);
+    initPawnMoveBitboards(bitboard[1]);
+}
+
+void initPawnMoveBitboards(uint64_t bitboard[][NUM_SQUARES]) {
+
+    for (square square = A2; square <= H2; square++) bitboard[white][square] = (BIT(square) << 8) | (BIT(square) << 16);
+    for (square square = A7; square <= H7; square++) bitboard[black][square] = (BIT(square) >> 8) | (BIT(square) >> 16);
+
+    for (square square = A3; square <= H7; square++) bitboard[white][square] = BIT(square) << 8;
+    for (square square = H6; square >= A2; square--) bitboard[black][square] = BIT(square) >> 8;
+}
+*/
+
 
 void initPawnBitboards(uint64_t bitboard[][NUM_SQUARES]) {
-
     const uint64_t AFileMask = 0xFEFEFEFEFEFEFEFE;
     const uint64_t HFileMask = 0x7F7F7F7F7F7F7F7F;
     const uint64_t whiteSource = 0x0000000000028000; // attack map for white pawn @ index 8 (with file spill)
