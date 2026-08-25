@@ -6,6 +6,7 @@
 #include "main.h"
 #include "FEN.h"
 #include "print.h"
+#include "move.h"
 
 /*
  *  checking for kingCheck: can tailor and optimize check for which bitboard youre checking. i.e. probably
@@ -26,6 +27,15 @@
  */
 
 
+
+
+
+// have precomputed attack bitboards. remove irrelevant rank and file bits. & with allPieces. should = 0. finally check
+// also remove bits beyond end index.
+// if BIT(end) & enemyPieces != 0 (then its ok, even though the above considers it blocked)
+// maybe lookup of file and rank per square?
+
+
 uint64_t inline set(const int index, uint64_t* bitboard) { // void?
     return *bitboard |= BIT(index);
 }
@@ -38,16 +48,6 @@ uint64_t inline clear (const int index, uint64_t* bitboard) {
     return *bitboard &= ~BIT(index);
 }
 
-uint64_t inline getAllPiecesForSide(side side, gameState_s* state) { // perhaps have a single function updating bitboard and piece array
-    return (
-        state->bitboard[side][pawn]   |
-        state->bitboard[side][knight] |
-        state->bitboard[side][bishop] |
-        state->bitboard[side][rook]   |
-        state->bitboard[side][queen]  |
-        state->bitboard[side][king]
-    );
-}
 
 square getIndexFromInput(char notation[]) {
     int fileIndex = (notation[1] - '0' - 1) * FILES;
@@ -74,6 +74,18 @@ uint64_t computeCastlingBitboard(gameState_s* state) { // state->castlingRights[
 }
 
 
+piece validatePiece(gameState_s* state, const square startSquare, const square endSquare) {
+    if (startSquare == invalid || endSquare == invalid)
+        return noPiece;
+
+    piece piece = state->pieceLookup[startSquare];
+    if (piece == noPiece || !(state->bitboard[state->playerToMove][piece] & BIT(startSquare)))
+        return noPiece;
+
+    return piece;
+}
+
+
 int main(int argc, char** argv) {
 
     gameState_s state;
@@ -91,36 +103,30 @@ int main(int argc, char** argv) {
 
     char startInput[3], endInput[3];
     char afterTurnMsg[16];
-    sprintf(afterTurnMsg, "%s to move:", state.playerToMove == white ? "White" : "Black");
 
     do {
+        sprintf(afterTurnMsg, "%s to move:", state.playerToMove == white ? "White" : "Black");
         printBoard(&state);
-        printf("\n\n%s\n", afterTurnMsg);
+        printf("\r\n\n%s\n", afterTurnMsg);
         scanf("%2s %2s", startInput, endInput);
 
         const square startSquare = getIndexFromInput(startInput);
         const square endSquare = getIndexFromInput(endInput);
 
-        piece piece;
-        if (startSquare == invalid || endSquare == invalid || !(state.bitboard[state.playerToMove][piece = state.pieceLookup[startSquare]] & BIT(startSquare))) {
+        piece piece = validatePiece(&state, startSquare, endSquare);
+        if(piece == noPiece) {
             strcpy(afterTurnMsg, "Invalid move.");
             continue;
         }
 
-        // streamline above and below
-        uint64_t map;
         switch (piece) {
-            case pawn: map = attackMap.pawn[state.playerToMove][startSquare]; break;
-            case knight: map = attackMap.knight[startSquare]; break;
-            case king: map = attackMap.king[startSquare]; break;
-            default: map = 0; break;
+            case pawn: ;
         }
 
 
 
         if (1/* MOVE IS LEGAL */) {
             state.playerToMove ^= 1; // change turn
-            sprintf(afterTurnMsg, "%s to move:", state.playerToMove == white ? "White" : "Black");
         } else {
             strcpy(afterTurnMsg, "Invalid move.");
         }

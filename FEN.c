@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "move.h"
 #include "print.h"
 
 piece inline charToPiece(char c) {
@@ -14,32 +15,23 @@ piece inline charToPiece(char c) {
         case 'R': case 'r': return rook;
         case 'Q': case 'q': return queen;
         case 'K': case 'k': return king;
-        default: THROW_EXCEPTION;
+        default: return noPiece;
     }
 }
 
 
 bool isValidLetter(char c) {
-    char pieceLetters[] = {
-        'P', 'N', 'B', 'R', 'Q', 'K',
-        'p', 'n', 'b', 'r', 'q', 'k'
-    };
-    for(int i = 0; i < sizeof(pieceLetters); i++) {
-        if(c == pieceLetters[i])
-            return true;
-    }
-
-    return false;
+    return charToPiece(c) != noPiece;
 }
 
 bool inline isValidDigit(char c) {
-    return c >= '1' && c <= '8' ? true : false;
+    return c >= '1' && c <= '8';
 }
 
 bool kingIsValid(uint64_t bitboard) {
     uint64_t result;
     __asm__("POPCNT %1, %0" : "=r"(result) : "r"(bitboard) : "cc");
-    return result == 1 ? true : false;
+    return result == 1;
 }
 
 bool stateIsValid(gameState_s* state) {
@@ -58,9 +50,12 @@ bool stateIsValid(gameState_s* state) {
 
     if (state->fiftyMoveRule > 100) return false;
 
-    // TODO: king may not be in check on opponents turn
-    return true;
-
+    /*
+    attackMap_s* map;
+    state->playerToMove ^= 1;
+    return !kingIsInCheck(state, map);
+    state->playerToMove ^= 1;
+    */
 }
 
 

@@ -31,7 +31,7 @@ char* pieceToStr(piece piece) {
         case rook:   return "rook";
         case queen:  return "queen";
         case king:   return "king";
-        default: THROW_EXCEPTION;
+        default: __builtin_unreachable();
     }
 }
 
@@ -45,7 +45,7 @@ void printState(gameState_s* state) {
     }
     printf("\n\nPiece Lookup:");
     printPieceLookup(state->pieceLookup);
-    printf("\n\nplayerToMove: %s\ncastlingRights: 0x%x\nenPassantIndex: %d\nfiftyMoveRule: %d\n", // "0x" prefix on %x is implementation defined (maybe)
+    printf("\n\nplayerToMove: %s\ncastlingRights: 0x%x\nenPassantIndex: %d\nfiftyMoveRule: %d\n",
         state->playerToMove == white ? "white" : "black", state->castlingRights, state->enPassantIndex, state->fiftyMoveRule);
     printf("\n\nAll white pieces:\n");
     printBitboard(state->piecesForSide[white]);
@@ -84,16 +84,14 @@ void printBoard(gameState_s* state) { // TODO: rework this abomination
 
 
 char pieceToChar(square square, gameState_s* state) { // this as well
-    uint64_t pieceIndex = 0;
-    set(square, &pieceIndex);
     switch (state->pieceLookup[square]) {
-        case pawn:    return pieceIndex & state->bitboard[white][pawn]   ? 'P' : 'p';
-        case knight:  return pieceIndex & state->bitboard[white][knight] ? 'N' : 'n';
-        case bishop:  return pieceIndex & state->bitboard[white][bishop] ? 'B' : 'b';
-        case rook:    return pieceIndex & state->bitboard[white][rook]   ? 'R' : 'r';
-        case queen:   return pieceIndex & state->bitboard[white][queen]  ? 'Q' : 'q';
-        case king:    return pieceIndex & state->bitboard[white][king]   ? 'K' : 'k';
+        case pawn:    return BIT(square) & state->bitboard[white][pawn]   ? 'P' : 'p';
+        case knight:  return BIT(square) & state->bitboard[white][knight] ? 'N' : 'n';
+        case bishop:  return BIT(square) & state->bitboard[white][bishop] ? 'B' : 'b';
+        case rook:    return BIT(square) & state->bitboard[white][rook]   ? 'R' : 'r';
+        case queen:   return BIT(square) & state->bitboard[white][queen]  ? 'Q' : 'q';
+        case king:    return BIT(square) & state->bitboard[white][king]   ? 'K' : 'k';
         case noPiece: return '-';
-        default: THROW_EXCEPTION;
+        default: __builtin_unreachable();
     }
 }

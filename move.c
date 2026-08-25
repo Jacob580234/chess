@@ -5,69 +5,151 @@
 #include "main.h"
 #include "bitboardDatabase.h"
 
-
-bool inline canMoveOne(gameState_s* state, const square start) {
-    return (state->playerToMove == white ? BIT(start) << 8 : BIT(start) >> 8) & ~state->allPieces;
+bool inline kingIsAttackedByKnight(gameState_s* state, attackMap_s* map) {
+    uint64_t opponentKnights = state->bitboard[state->playerToMove ^ 1][knight];
+    uint8_t kingIndex = state->kingIndex[state->playerToMove];
+    return map->knight[kingIndex] & opponentKnights;
 }
 
-bool inline isMovingOne(gameState_s* state, const square start, const square end) {
-    return state->playerToMove == white ? BIT(start) << 8 == BIT(end) : BIT(start) >> 8 == BIT(end);
+bool inline kingIsAttackedByKing(gameState_s* state, attackMap_s* map) {
+    uint64_t opponentKing = state->bitboard[state->playerToMove ^ 1][king];
+    uint8_t kingIndex = state->kingIndex[state->playerToMove];
+    return map->king[kingIndex] & opponentKing;
 }
 
-bool inline moveTwo(gameState_s* state, const square start, const square end) {
-    return ((state->playerToMove == white ? BIT(start) << 16 : BIT(start) >> 16) == BIT(end)) & ~state->allPieces;
+bool inline kingIsAttackedByPawn(gameState_s* state, attackMap_s* map) {
+    uint64_t opponentPawns = state->bitboard[state->playerToMove ^ 1][pawn];
+    uint8_t kingIndex = state->kingIndex[state->playerToMove];
+    return map->pawn[state->playerToMove ^ 1][kingIndex] & opponentPawns;
 }
 
-bool inline isFirstPawnMove(gameState_s* state, const square start) {
-    return state->playerToMove == white ? start <= H2 : start >= A7;
+bool kingIsInCheck(gameState_s* state, attackMap_s* map) {
+    if(kingIsAttackedByKnight(state, map)) return true;
+    if(kingIsAttackedByKing(state, map))   return true;
+    if(kingIsAttackedByPawn(state, map))   return true;
+
+    return false;
 }
+
+bool moveIsLegal(gameState_s* state, attackMap_s* map, const square start, const square end, void (*simulateMove)(gameState_s*, square, square)) {
+
+    gameState_s afterMoveState = *state;
+    simulateMove(&afterMoveState, start, end);
+
+    if (!kingIsInCheck(&afterMoveState, map))
+        return false;
+
+    *state = afterMoveState;
+    return true;
+}
+
+void removeSelectedPiece(gameState_s* state, const square start, piece piece) {
+    state->pieceLookup[start] = noPiece;
+    clear(start, &state->bitboard[state->playerToMove][piece]);
+}
+
+void handleCapture(gameState_s* state, const square end) {
+    piece opponentPiece = state->pieceLookup[end];
+    if (opponentPiece != noPiece) {
+        clear(end, &state->bitboard[state->playerToMove ^ 1][opponentPiece]);
+        clear(end, &state->piecesForSide[state->playerToMove ^ 1]);
+        state->fiftyMoveRule = 0; // reset 50-move rule on capture
+    }
+}
+
+void moveSelectedPiece(gameState_s* state, const square end, piece piece) {
+    state->pieceLookup[end] = piece;
+    set(end, &state->bitboard[state->playerToMove][piece]);
+}
+
+void updateGeneralBitboards(gameState_s* state, const square start, const square end) {
+    clear(start, &state->piecesForSide[state->playerToMove]);
+    set(end, &state->piecesForSide[state->playerToMove]);
+    state->allPieces = state->piecesForSide[white] | state->piecesForSide[black];
+}
+
+// separate functions for castling and en passant moves? and perhaps promotion?
+void simulateMoveGeneral(gameState_s* state, const square start, const square end) {
+    
+    piece ownPiece = state->pieceLookup[start];
+
+    removeSelectedPiece(state, start, ownPiece);
+    handleCapture(state, end);
+    moveSelectedPiece(state, end, ownPiece);
+    updateGeneralBitboards(state, start, end);
+
+}
+
+
+void simulateMovePawn(gameState_s* state, const square start, const square end) {
+
+    piece pawn = state->pieceLookup[start];
+
+    removeSelectedPiece(state, start, pawn);
+    handleCapture(state, end);
+    moveSelectedPiece(state, end, pawn);
+
+    if (end == state->enPassantIndex) {
+        square opponentPawnIndex = state->playerToMove == white ? end + 8 : end - 8;
+        clear(opponentPawnIndex, &state->bitboard[state->playerToMove ^ 1][pawn]);
+    }
+
+    updateGeneralBitboards(state, start, end);
+    state->fiftyMoveRule = 0;
+}
+
+void simulateMoveKing(gameState_s* state, const square start, const square end) {
+    // needs to handle moving rook. also check for if in check for castling? perhaps in "kingMoves" function, not this one
+}
+
 
 bool pawnMoves(gameState_s* state, attackMap_s* map, const square start, const square end) {
 
     uint64_t attackPseudoLegal = map->pawn[state->playerToMove][start];
-    if (read(end, attackPseudoLegal & state->piecesForSide[state->playerToMove ^ 1] | BIT(state->enPassantIndex))) { // combine into below normal move check? idk
-        // pawn can attack and there is opponent piece there (or en passant)
-        if (end == state->enPassantIndex) {
-            // handle it
-        }
+
+    bool isAttacking = read(end, attackPseudoLegal & (state->piecesForSide[state->playerToMove ^ 1] | BIT(state->enPassantIndex)));
+    bool canMoveOne, isMovingOne, moveTwo, isFirstPawnMove;
+
+    state->playerToMove == white ? ( // dont assign all at once, do if by if(?)
+        canMoveOne      = BIT(start) << 8 & ~state->allPieces,
+        isMovingOne     = BIT(start) << 8 == BIT(end),
+        moveTwo         = BIT(start) << 16 & ~state->allPieces,
+        isFirstPawnMove = start <= H2
+    ) : (
+        canMoveOne      = BIT(start) >> 8 & ~state->allPieces,
+        isMovingOne     = BIT(start) >> 8 == BIT(end),
+        moveTwo         = BIT(start) >> 16 == (BIT(end) & ~state->allPieces),
+        isFirstPawnMove = start >= A7
+    );
+
+    if(!canMoveOne && !isAttacking) return false; // if you cant move one, you cant move two; no matter
+
+    if (isMovingOne || isAttacking) {
+        if (isFirstPawnMove && moveTwo)
+            state->enPassantIndex = state->playerToMove == white ? start + 8 : start - 8;
+
+        return moveIsLegal(state, map, start, end, &simulateMovePawn); // needs to be simulateMovePawn
     }
 
-
-    if(!canMoveOne(state, start)) return false; // if you cant move one, you cant move two; no matter
-
-
-    if (isMovingOne(state, start, end)) {
-        // SIMULATE
-    }
-    else if (isFirstPawnMove(state, start) && moveTwo(state, start, end)) {
-        state->enPassantIndex = state->playerToMove == white ? start + 8 : start - 8;
-        // SIMULATE
-    }
-    else return false;
-
-
-
-
-    // checking for promotion after move has been deemed legal or before? shouldnt matter so after is easier ?
-    // perhaps something to do with stalemate?
+    return false;
 }
 
 
-bool kingIsInCheck(gameState_s* state, attackMap_s* map) {
-    if(map->knight[state->kingIndex[state->playerToMove]] & state->bitboard[state->playerToMove ^ 1][knight]) return true;
-    if(map->king[state->kingIndex[state->playerToMove]] & state->bitboard[state->playerToMove ^ 1][king]) return true;
-    if(map->pawn[state->playerToMove ^ 1][state->kingIndex[state->playerToMove]] & state->bitboard[state->playerToMove ^ 1][pawn]) return true;
 
+bool knightMoves(gameState_s* state, attackMap_s* map, const square start, const square end) {
+    uint64_t pseudoLegal = map->knight[start];
+    if(!read(end, pseudoLegal)) return false;
+    return moveIsLegal(state, map, start, end, &simulateMoveGeneral);
 }
 
-
-gameState_s* simulateMove(gameState_s* state) {
-
+bool kingMoves(gameState_s* state, attackMap_s* map, const square start, const square end) {
+    // castling
+    uint64_t pseudoLegal = map->king[start];
+    if(!read(end, pseudoLegal & ~state->piecesForSide[state->playerToMove])) return false;
 }
 
 
 bool rookMoves(gameState_s* state, const square start, const square end) {
-    // use PEXT with a mask of the file youre trying to move along, &'ed with ^ of blocking pieces or something. somehow check
-    // or read king index or rook index or something from result
+
 
 }
