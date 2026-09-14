@@ -1,17 +1,40 @@
 #include <stdint.h>
 #include "main.h"
-#include "bitboardDatabase.h"
+#include "attackMaps.h"
+#include "move.h"
 #include "print.h"
 
-void initAttackMaps(attackMap_s* attackMap) {
-    initPawnBitboards(attackMap->pawn);
-    initPawnBitboards(attackMap->pawn);
-    initKnightBitboards(attackMap->knight);
-    initKingBitboards(attackMap->king);
+
+uint64_t inline pext(uint64_t mask, uint64_t src) {
+    uint64_t result;
+    __asm__("PEXTQ %1, %2, %0" : "=r"(result) : "r"(mask), "r"(src) : "cc");
+    return result;
 }
 
 
-void initKingBitboards(uint64_t bitboard[]) {
+uint64_t inline pdep(uint64_t mask, uint64_t src) {
+    uint64_t result;
+    __asm__("PDEPQ %1, %2, %0" : "=r"(result) : "r"(mask), "r"(src) : "cc");
+    return result;
+}
+
+int inline popcnt(uint64_t src) {
+    uint64_t result;
+    __asm__("POPCNTQ %1, %0" : "=r"(result) : "r"(src) : "cc");
+    return (int)result;
+}
+
+
+void initAttackMaps(attackMap_s* attackMap) {
+    initPawnMaps(attackMap->pawn);
+    initKnightMaps(attackMap->knight);
+    initKingMaps(attackMap->king);
+    initRookMaps(attackMap->rookPextTable, attackMap->rookBlockerMask, attackMap->rookPextTableOffset);
+    initBishopMaps(attackMap->bishopPextTable, attackMap->bishopBlockerMask, attackMap->bishopPextTableOffset);
+}
+
+
+void initKingMaps(uint64_t bitboard[]) {
 
     const uint64_t AFileMask = 0xFEFEFEFEFEFEFEFE; // bitboard layout means this filters out the left (A) file
     const uint64_t HFileMask = 0x7F7F7F7F7F7F7F7F; // bitboard layout means this filters out the right (H) file
@@ -36,7 +59,7 @@ void initKingBitboards(uint64_t bitboard[]) {
 }
 
 
-void initKnightBitboards(uint64_t bitboard[]) {
+void initKnightMaps(uint64_t bitboard[]) {
     // beware of potential issues with shifting these (HFileMask >> x)
     const uint64_t AFileMask = 0xFEFEFEFEFEFEFEFE;
     const uint64_t HFileMask = 0x7F7F7F7F7F7F7F7F;
@@ -87,9 +110,9 @@ void initPawnMoveBitboards(uint64_t bitboard[][NUM_SQUARES]) {
 */
 
 
-void initPawnBitboards(uint64_t bitboard[][NUM_SQUARES]) {
-    const uint64_t AFileMask = 0xFEFEFEFEFEFEFEFE;
-    const uint64_t HFileMask = 0x7F7F7F7F7F7F7F7F;
+void initPawnMaps(uint64_t bitboard[][NUM_SQUARES]) {
+    const uint64_t AFileMask   = 0xFEFEFEFEFEFEFEFE;
+    const uint64_t HFileMask   = 0x7F7F7F7F7F7F7F7F;
     const uint64_t whiteSource = 0x0000000000028000; // attack map for white pawn @ index 8 (with file spill)
     const uint64_t blackSource = 0x0001400000000000; // attack map for black pawn @ index 55 (with file spill)
 
@@ -109,4 +132,67 @@ void initPawnBitboards(uint64_t bitboard[][NUM_SQUARES]) {
             bitboard[black][blackIndex] &= AFileMask;
         }
     }
+}
+
+void initRookMaps(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextTableOffset[]) {
+
+    uint64_t AFileMask     = 0x0101010101010101;
+    uint64_t FirstRankMask = 0x00000000000000FF;
+
+    for (int rank = 0; rank < 8; rank++) {
+        for (int file = 0; file < 8; file++) {
+            square src = rank * 8 + file;
+            uint64_t bitboard = (AFileMask << file) | (FirstRankMask << rank * 8);
+            clear(src, &bitboard);
+
+            if (RANK(src) != 0) bitboard &= ~FirstRankMask;
+            if (RANK(src) != 7) bitboard &= ~(FirstRankMask << 7 * 8);
+            if (FILE(src) != 0) bitboard &= ~AFileMask;
+            if (FILE(src) != 7) bitboard &= ~(AFileMask << 7);
+
+            blockerMask[src] = bitboard;
+        }
+    }
+
+    pextTableOffset[0] = 0;
+    for (int i = 0; i < 64; i++) {
+        int combinations = 1 << popcnt(blockerMask[i]);
+        if (i != 63) pextTableOffset[i+1] = (pextTableOffset[i] + combinations);
+        for (int j = 0; j < combinations; j++) {
+            uint64_t blockers = pdep(blockerMask[i], j);
+            pextTable[j + pextTableOffset[i]] = generateRookMoves(blockers, i);
+        }
+    }
+}
+
+void initBishopMaps(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextTableOffset[]) {
+
+    uint64_t diagonal = 0x8040201008040201;
+    uint64_t antiDiagonal = 0x0102040810204080;
+    printBitboard(diagonal | antiDiagonal);
+}
+
+
+uint64_t generateRookMoves(uint64_t blockers, int square) {
+
+    uint64_t bitboard = 0;
+
+    for (int i = 0, current = square - 8; i < LEN_DOWN(square); i++, current -= 8) {
+        set(current, &bitboard);
+        if(read(current, blockers)) break;
+    }
+    for (int i = 0, current = square - 1; i < LEN_LEFT(square); i++, current--) {
+        set(current, &bitboard);
+        if(read(current, blockers)) break;
+    }
+    for (int i = 0, current = square + 1; i < LEN_RIGHT(square); i++, current++) {
+        set(current, &bitboard);
+        if(read(current, blockers)) break;
+    }
+    for (int i = 0, current = square + 8; i < LEN_UP(square); i++, current += 8) {
+        set(current, &bitboard);
+        if(read(current, blockers)) break;
+    }
+
+    return bitboard;
 }

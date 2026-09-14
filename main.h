@@ -31,13 +31,17 @@ typedef struct {
     uint64_t piecesForSide[2]; // all pieces of a certain color. used to check blocking / capturing. Subject for removal
     uint64_t allPieces;
     piece pieceLookup[NUM_SQUARES];
-    uint8_t kingIndex[2];
 
     side playerToMove;
     uint8_t castlingRights : 6; // inadequate on its own; helper function to compute castling rights needed
     square enPassantIndex; // square to which a pawn would be after capturing en passant (the one the mover jumped over)
     uint8_t fiftyMoveRule;
 } gameState_s;
+
+typedef uint32_t move_t;
+#define KING_SIDE_CASTLE  0b01000000000000;
+#define QUEEN_SIDE_CASTLE 0b10000000000000;
+// ....
 
 uint64_t clear (int index, uint64_t* bitboard);
 uint64_t set(int index, uint64_t* bitboard);

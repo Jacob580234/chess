@@ -14,6 +14,7 @@ void printPieceLookup(piece* pieceLookup) {
 
 
 void printBitboard(uint64_t bitboard) {
+    printf("\n\n");
     for (int i = 8; i > 0; i--) {
         printf("\n");
         for (int j = 0; j < 8; j++) {

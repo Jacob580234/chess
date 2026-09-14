@@ -69,29 +69,29 @@ int strToInt(char* str) { // atoi not adequate: must return error value on inval
 }
 
 bool parsePosition(char* position, gameState_s* state) {
+
     for (square square = A1; square <= H8; square++)
         state->pieceLookup[square] = noPiece;
 
-    square currentSquare;
-    for (currentSquare = A8; *position; currentSquare++, position++) { // FEN goes from A8 --> H1
+    square currentSquare = invalid;
+    for (int rank = 7, file = 0; *position; file++, position++) { // FEN goes from A8 --> H1
+
+        currentSquare = rank * 8 + file;
         char c = *position;
-        if (isValidLetter(c)) {
+
+        if (c == '/' && file == 8) { rank--, file = -1;  } // go to starting point of previous rank
+        else if (isValidDigit(c))  { file += c - '0' - 1;} // skip c amount of files
+        else if (isValidLetter(c)) {
             piece piece = charToPiece(c);
             side side = (c <= 'Z' ? white : black);
             set(currentSquare, &state->bitboard[side][piece]);
+            state->piecesForSide[side] |= BIT(currentSquare);
             state->pieceLookup[currentSquare] = piece;
         }
-        else if (isValidDigit(c)) currentSquare += c - '0' - 1; // skip c amount of files
-        else if (c == '/' && currentSquare % 8 == 0) currentSquare -= 2*FILES+1; // go to starting point of previous rank
         else return false;
-
     }
-    if(currentSquare != H1 + 1) return false;
+    if(currentSquare != H1) return false; // TODO: doesnt work if first rank is empty
 
-    for (piece piece = pawn; piece <= king; piece++) {
-        state->piecesForSide[white] |= state->bitboard[white][piece];
-        state->piecesForSide[black] |= state->bitboard[black][piece];
-    }
     state->allPieces = state->piecesForSide[white] | state->piecesForSide[black];
 
     return true;
@@ -102,6 +102,7 @@ bool parseTurn(const char turn, gameState_s* state) {
     if      (turn == 'w') state->playerToMove = white;
     else if (turn == 'b') state->playerToMove = black;
     else return false;
+
     return true;
 }
 
@@ -148,7 +149,7 @@ void parseFEN(char* FEN, gameState_s* state) {
     if (!parseEnPassant(enPassant, state))  goto invalid;
     if (!parseHalfMoves(halfMoves, state))  goto invalid;
 
-    if(!stateIsValid(state))                goto invalid;
+    //if(!stateIsValid(state))                goto invalid;
 
     return;
 
