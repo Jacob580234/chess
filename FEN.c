@@ -68,6 +68,7 @@ int strToInt(char* str) { // atoi not adequate: must return error value on inval
     return result;
 }
 
+
 bool parsePosition(char* position, gameState_s* state) {
 
     for (square square = A1; square <= H8; square++)
@@ -122,11 +123,13 @@ bool parseCastling(char* castling, gameState_s* state) {
     return true;
 }
 
+
 bool parseEnPassant(char* enPassant, gameState_s* state) {
     if (*enPassant == '-') state->enPassantIndex = invalid;
     else if (state->enPassantIndex = getIndexFromInput(enPassant) == invalid) return false;
     return true;
 }
+
 
 bool parseHalfMoves(char* halfMoves, gameState_s* state) {
     if (state->fiftyMoveRule = strToInt(halfMoves) == -1) return false;

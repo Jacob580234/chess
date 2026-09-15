@@ -34,10 +34,25 @@ bool inline kingIsAttackedByPawn(gameState_s* restrict state, attackMap_s* restr
     return map->pawn[state->playerToMove ^ 1][kingIndex] & opponentPawns;
 }
 
+
 bool inline kingIsAttackedByRook(gameState_s* restrict state, attackMap_s* restrict map) {
     uint64_t opponentRooks = state->bitboard[state->playerToMove ^ 1][rook];
     square kingIndex = getKingIndex(state->bitboard[state->playerToMove][king]);
-    return rookMoves(state, map, kingIndex, -9999999999999999) & opponentRooks;
+    return rookMoves(state, map, kingIndex, -9999999999999999) & opponentRooks; // just needs attack bitboard, not to actually calculate and simulate the move
+}
+
+
+bool inline kingIsAttackedByBishop(gameState_s* restrict state, attackMap_s* restrict map) {
+    uint64_t opponentBishops = state->bitboard[state->playerToMove ^ 1][bishop];
+    square kingIndex = getKingIndex(state->bitboard[state->playerToMove][king]);
+    return bishopMoves(state, map, kingIndex, -9999999999999999) & opponentBishops; // just needs attack bitboard, not to actually calculate and simulate the move
+}
+
+
+bool inline kingIsAttackedByQueen(gameState_s* restrict state, attackMap_s* restrict map) {
+    uint64_t opponentQueens = state->bitboard[state->playerToMove ^ 1][queen];
+    square kingIndex = getKingIndex(state->bitboard[state->playerToMove][king]);
+    return queenMoves(state, map, kingIndex, -9999999999999999) & opponentQueens; // just needs attack bitboard, not to actually calculate and simulate the move
 }
 
 
@@ -47,7 +62,9 @@ bool kingIsInCheck(gameState_s* restrict state, attackMap_s* restrict map) {
         kingIsAttackedByKnight(state, map) ||
         kingIsAttackedByKing(state, map)   ||
         kingIsAttackedByPawn(state, map)   ||
-        kingIsAttackedByRook(state, map)
+        kingIsAttackedByRook(state, map)   ||
+        kingIsAttackedByBishop(state, map) ||
+        kingIsAttackedByQueen(state, map)
     );
 }
 
@@ -181,5 +198,25 @@ bool kingMoves(gameState_s* restrict state, attackMap_s* restrict map, const squ
 
 bool rookMoves(gameState_s* restrict state, attackMap_s* restrict map, const square start, const square end) {
     uint32_t index = map->rookPextTableOffset[start] + pext(map->rookBlockerMask[start], state->allPieces);
-    return map->rookPextTable[index] & ~state->piecesForSide[state->playerToMove];
+    uint64_t pseudoLegal = map->rookPextTable[index] & ~state->piecesForSide[state->playerToMove];
+    if(!read(end, pseudoLegal)) return false;
+    return moveIsLegal(state, map, start, end, &simulateMoveGeneral);
+}
+
+
+bool bishopMoves(gameState_s* restrict state, attackMap_s* restrict map, const square start, const square end) {
+    uint32_t index = map->bishopPextTableOffset[start] + pext(map->bishopBlockerMask[start], state->allPieces);
+    uint64_t pseudoLegal = map->bishopPextTable[index] & ~state->piecesForSide[state->playerToMove];
+    if(!read(end, pseudoLegal)) return false;
+    return moveIsLegal(state, map, start, end, &simulateMoveGeneral);
+}
+
+
+bool queenMoves(gameState_s* restrict state, attackMap_s* restrict map, const square start, const square end) {
+    uint32_t index = map->rookPextTableOffset[start] + pext(map->rookBlockerMask[start], state->allPieces);
+    uint64_t pseudoLegal = map->rookPextTable[index] & ~state->piecesForSide[state->playerToMove];
+    index = map->bishopPextTableOffset[start] + pext(map->bishopBlockerMask[start], state->allPieces);
+    pseudoLegal |= map->bishopPextTable[index] & ~state->piecesForSide[state->playerToMove];
+    if (!read(end, pseudoLegal)) return false;
+    return moveIsLegal(state, map, start, end, &simulateMoveGeneral);
 }

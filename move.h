@@ -13,13 +13,20 @@
 bool kingIsAttackedByKnight(gameState_s* state, attackMap_s* map);
 bool kingIsAttackedByKing(gameState_s* state, attackMap_s* map);
 bool kingIsAttackedByPawn(gameState_s* state, attackMap_s* map);
+bool kingIsAttackedByRook(gameState_s* state, attackMap_s* map);
+bool kingIsAttackedByBishop(gameState_s* state, attackMap_s* map);
+bool kingIsAttackedByQueen(gameState_s* state, attackMap_s* map);
 bool kingIsInCheck(gameState_s* state, attackMap_s* map);
+
 bool moveIsLegal(gameState_s* state, attackMap_s* map, square start, square end, void (*simulateMove)(gameState_s*, square, square));
 void simulateMoveGeneral(gameState_s* copy, square start, square end);
+
 bool pawnMoves(gameState_s* state, attackMap_s* map, square start, square end);
 bool knightMoves(gameState_s* state, attackMap_s* map, square start, square end);
 bool kingMoves(gameState_s* state, attackMap_s* map, square start, square end);
 bool rookMoves(gameState_s* state, attackMap_s* map, square start, square end);
+bool bishopMoves(gameState_s* state, attackMap_s* map, square start, square end);
+bool queenMoves(gameState_s* state, attackMap_s* map, square start, square end);
 square getKingIndex(uint64_t bitboard);
 
 

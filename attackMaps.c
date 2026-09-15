@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include "main.h"
 #include "attackMaps.h"
+
+#include <stdio.h>
+
 #include "move.h"
 #include "print.h"
 
@@ -17,6 +20,7 @@ uint64_t inline pdep(uint64_t mask, uint64_t src) {
     __asm__("PDEPQ %1, %2, %0" : "=r"(result) : "r"(mask), "r"(src) : "cc");
     return result;
 }
+
 
 int inline popcnt(uint64_t src) {
     uint64_t result;
@@ -111,6 +115,7 @@ void initPawnMoveBitboards(uint64_t bitboard[][NUM_SQUARES]) {
 
 
 void initPawnMaps(uint64_t bitboard[][NUM_SQUARES]) {
+
     const uint64_t AFileMask   = 0xFEFEFEFEFEFEFEFE;
     const uint64_t HFileMask   = 0x7F7F7F7F7F7F7F7F;
     const uint64_t whiteSource = 0x0000000000028000; // attack map for white pawn @ index 8 (with file spill)
@@ -134,64 +139,66 @@ void initPawnMaps(uint64_t bitboard[][NUM_SQUARES]) {
     }
 }
 
+
 void initRookMaps(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextTableOffset[]) {
 
-    uint64_t AFileMask     = 0x0101010101010101;
-    uint64_t FirstRankMask = 0x00000000000000FF;
-
-    for (int rank = 0; rank < 8; rank++) {
-        for (int file = 0; file < 8; file++) {
-            square src = rank * 8 + file;
-            uint64_t bitboard = (AFileMask << file) | (FirstRankMask << rank * 8);
-            clear(src, &bitboard);
-
-            if (RANK(src) != 0) bitboard &= ~FirstRankMask;
-            if (RANK(src) != 7) bitboard &= ~(FirstRankMask << 7 * 8);
-            if (FILE(src) != 0) bitboard &= ~AFileMask;
-            if (FILE(src) != 7) bitboard &= ~(AFileMask << 7);
-
-            blockerMask[src] = bitboard;
-        }
-    }
-
     pextTableOffset[0] = 0;
-    for (int i = 0; i < 64; i++) {
-        int combinations = 1 << popcnt(blockerMask[i]);
-        if (i != 63) pextTableOffset[i+1] = (pextTableOffset[i] + combinations);
-        for (int j = 0; j < combinations; j++) {
-            uint64_t blockers = pdep(blockerMask[i], j);
-            pextTable[j + pextTableOffset[i]] = generateRookMoves(blockers, i);
-        }
+    int incr[] = { -8, -1, 1, 8 };
+    for (int i = 0; i < NUM_SQUARES; i++) {
+        int len[] = {
+            LEN_DOWN(i) - 1,
+            LEN_LEFT(i) - 1,
+            LEN_RIGHT(i) - 1,
+            LEN_UP(i) - 1
+        };
+        blockerMask[i] = generateSlidingPieceMoves(0ULL, i, len, incr);
+        for (int j = 0; j < 4; j++) len[j]++;
+        populatePextTable(pextTable, blockerMask, pextTableOffset, len, incr, i);
     }
 }
+
 
 void initBishopMaps(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextTableOffset[]) {
 
-    uint64_t diagonal = 0x8040201008040201;
-    uint64_t antiDiagonal = 0x0102040810204080;
-    printBitboard(diagonal | antiDiagonal);
+    pextTableOffset[0] = 0;
+    int incr[] = { 7, 9, -9, -7 };
+    for (int i = 0; i < NUM_SQUARES; i++) {
+        int len[] = {
+            MIN(LEN_UP(i), LEN_LEFT(i)) - 1,
+            MIN(LEN_UP(i), LEN_RIGHT(i)) - 1,
+            MIN(LEN_DOWN(i), LEN_LEFT(i)) - 1,
+            MIN(LEN_DOWN(i), LEN_RIGHT(i)) - 1
+        };
+        blockerMask[i] = generateSlidingPieceMoves(0ULL, i, len, incr);
+        for (int j = 0; j < 4; j++) len[j]++;
+        populatePextTable(pextTable, blockerMask, pextTableOffset, len, incr, i);
+    }
+
 }
 
 
-uint64_t generateRookMoves(uint64_t blockers, int square) {
+void populatePextTable(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextTableOffset[], int len[], int incr[], int square) {
+
+    int blockerCombinations = 1 << popcnt(blockerMask[square]); // 2^popcnt
+
+    if (square != 63)
+        pextTableOffset[square+1] = (pextTableOffset[square] + blockerCombinations);
+
+    for (int j = 0; j < blockerCombinations; j++) {
+        uint64_t blockers = pdep(blockerMask[square], j);
+        pextTable[j + pextTableOffset[square]] = generateSlidingPieceMoves(blockers, square, len, incr);
+    }
+}
+
+
+uint64_t generateSlidingPieceMoves(uint64_t blockers, int square, int len[], int incr[]) {
 
     uint64_t bitboard = 0;
-
-    for (int i = 0, current = square - 8; i < LEN_DOWN(square); i++, current -= 8) {
-        set(current, &bitboard);
-        if(read(current, blockers)) break;
-    }
-    for (int i = 0, current = square - 1; i < LEN_LEFT(square); i++, current--) {
-        set(current, &bitboard);
-        if(read(current, blockers)) break;
-    }
-    for (int i = 0, current = square + 1; i < LEN_RIGHT(square); i++, current++) {
-        set(current, &bitboard);
-        if(read(current, blockers)) break;
-    }
-    for (int i = 0, current = square + 8; i < LEN_UP(square); i++, current += 8) {
-        set(current, &bitboard);
-        if(read(current, blockers)) break;
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0, current = square + incr[i]; j < len[i]; j++, current += incr[i]) {
+            set(current, &bitboard);
+            if(read(current, blockers)) break;
+        }
     }
 
     return bitboard;
