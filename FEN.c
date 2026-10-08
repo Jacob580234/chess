@@ -3,9 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "move.h"
-#include "print.h"
 
 piece inline charToPiece(char c) {
     switch(c) {
@@ -29,9 +27,7 @@ bool inline isValidDigit(char c) {
 }
 
 bool kingIsValid(uint64_t bitboard) {
-    uint64_t result;
-    __asm__("POPCNT %1, %0" : "=r"(result) : "r"(bitboard) : "cc");
-    return result == 1;
+    return POPCNT(bitboard) == 1;
 }
 
 bool stateIsValid(gameState_s* state) {
@@ -56,6 +52,8 @@ bool stateIsValid(gameState_s* state) {
     return !kingIsInCheck(state, map);
     state->playerToMove ^= 1;
     */
+
+    return true;
 }
 
 
@@ -109,14 +107,14 @@ bool parseTurn(const char turn, gameState_s* state) {
 
 
 bool parseCastling(char* castling, gameState_s* state) {
-    state->castlingRights = 0b111111; // assume no castling; clear accordingly
+    state->castlingRights = 0b0000;
     if (*castling == '-') return true;
     for(;*castling; castling++) {
         switch (*castling) {
-            case 'K': state->castlingRights &= 0b111100; break;
-            case 'Q': state->castlingRights &= 0b111001; break;
-            case 'k': state->castlingRights &= 0b100111; break;
-            case 'q': state->castlingRights &= 0b001111; break;
+            case 'K': state->castlingRights |= 0b0100; break;
+            case 'Q': state->castlingRights |= 0b1000; break;
+            case 'k': state->castlingRights |= 0b0001; break;
+            case 'q': state->castlingRights |= 0b0010; break;
             default: return false;
         }
     }

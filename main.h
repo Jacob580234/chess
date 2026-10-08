@@ -13,8 +13,28 @@
                   exit(EXIT_FAILURE);                                                              \
               } while(0)
 
+#define START(move) ((move) & 0b111111)
+#define END(move) ((move) >> 6 & 0b111111)
+
+
+#define DOUBLE_PAWN_PUSH 0b0001000000000000
+#define KING_CASTLE      0b0010000000000000
+#define QUEEN_CASTLE     0b0011000000000000
+#define CAPTURE          0b0100000000000000
+#define EP_CAPTURE       0b0101000000000000
+
+#define KNIGHT_PROMO     0b1000000000000000
+#define BISHOP_PROMO     0b1001000000000000
+#define ROOK_PROMO       0b1010000000000000
+#define QUEEN_PROMO      0b1011000000000000
+#define KNIGHT_PROMO_CAP 0b1100000000000000
+#define BISHOP_PROMO_CAP 0b1101000000000000
+#define ROOK_PROMO_CAP   0b1110000000000000
+#define QUEEN_PROMO_CAP  0b1111000000000000
+
+#include <stdbool.h>
+
 typedef enum: uint8_t { white, black } side;
-typedef enum: uint8_t { false, true } bool;
 typedef enum: uint8_t { pawn, knight, bishop, rook, queen, king, noPiece } piece;
 typedef enum: uint8_t { A1, B1, C1, D1, E1, F1, G1, H1,
                         A2, B2, C2, D2, E2, F2, G2, H2,
@@ -33,22 +53,17 @@ typedef struct {
     piece pieceLookup[NUM_SQUARES];
 
     side playerToMove;
-    uint8_t castlingRights : 6; // inadequate on its own; helper function to compute castling rights needed
+    uint8_t castlingRights : 4; // inadequate on its own; helper function to compute castling rights needed
     square enPassantIndex; // square to which a pawn would be after capturing en passant (the one the mover jumped over)
     uint8_t fiftyMoveRule;
 } gameState_s;
 
-typedef uint32_t move_t;
-#define KING_SIDE_CASTLE  0b01000000000000;
-#define QUEEN_SIDE_CASTLE 0b10000000000000;
 // ....
 
 uint64_t clear (int index, uint64_t* bitboard);
-uint64_t set(int index, uint64_t* bitboard);
+void set(int index, uint64_t* bitboard);
 bool read(int index, uint64_t bitboard);
 square getIndexFromInput(char notation[]);
-uint64_t getAllPiecesForSide(side side, gameState_s* state);
-
 
 
 #endif //CHESS_V2_MAIN_H

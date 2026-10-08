@@ -1,28 +1,25 @@
 #include <stdint.h>
 #include "main.h"
 #include "attackMaps.h"
-
-#include <stdio.h>
-
 #include "move.h"
-#include "print.h"
+#include <string.h>
 
 
-uint64_t inline pext(uint64_t mask, uint64_t src) {
+uint64_t inline PEXT(uint64_t mask, uint64_t src) {
     uint64_t result;
     __asm__("PEXTQ %1, %2, %0" : "=r"(result) : "r"(mask), "r"(src) : "cc");
     return result;
 }
 
 
-uint64_t inline pdep(uint64_t mask, uint64_t src) {
+uint64_t inline PDEP(uint64_t mask, uint64_t src) {
     uint64_t result;
     __asm__("PDEPQ %1, %2, %0" : "=r"(result) : "r"(mask), "r"(src) : "cc");
     return result;
 }
 
 
-int inline popcnt(uint64_t src) {
+int inline POPCNT(uint64_t src) {
     uint64_t result;
     __asm__("POPCNTQ %1, %0" : "=r"(result) : "r"(src) : "cc");
     return (int)result;
@@ -35,6 +32,7 @@ void initAttackMaps(attackMap_s* attackMap) {
     initKingMaps(attackMap->king);
     initRookMaps(attackMap->rookPextTable, attackMap->rookBlockerMask, attackMap->rookPextTableOffset);
     initBishopMaps(attackMap->bishopPextTable, attackMap->bishopBlockerMask, attackMap->bishopPextTableOffset);
+    initCastlingMap(attackMap->castling);
 }
 
 
@@ -179,13 +177,13 @@ void initBishopMaps(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextT
 
 void populatePextTable(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextTableOffset[], int len[], int incr[], int square) {
 
-    int blockerCombinations = 1 << popcnt(blockerMask[square]); // 2^popcnt
+    int blockerCombinations = 1 << POPCNT(blockerMask[square]); // 2^popcnt
 
     if (square != 63)
         pextTableOffset[square+1] = (pextTableOffset[square] + blockerCombinations);
 
     for (int j = 0; j < blockerCombinations; j++) {
-        uint64_t blockers = pdep(blockerMask[square], j);
+        uint64_t blockers = PDEP(blockerMask[square], j);
         pextTable[j + pextTableOffset[square]] = generateSlidingPieceMoves(blockers, square, len, incr);
     }
 }
@@ -202,4 +200,17 @@ uint64_t generateSlidingPieceMoves(uint64_t blockers, int square, int len[], int
     }
 
     return bitboard;
+}
+
+
+void initCastlingMap(uint64_t map[]) {
+    memset(map, 0, NUM_SQUARES * sizeof(uint64_t));
+
+    map[A1] = 0b0111; // white queen side
+    map[E1] = 0b0011; // white both
+    map[H1] = 0b1011; // white king side
+
+    map[A8] = 0b1101; // black queen side
+    map[E8] = 0b1100; // black both
+    map[H8] = 0b1110; // black king side
 }

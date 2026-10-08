@@ -5,12 +5,12 @@
 #include "attackMaps.h"
 #include "main.h"
 #include "FEN.h"
-#include "print.h"
 #include "move.h"
+#include "print.h"
 
 
-uint64_t inline set(const int index, uint64_t* bitboard) { // void?
-    return *bitboard |= BIT(index);
+void inline set(const int index, uint64_t* bitboard) { // void?
+    *bitboard |= BIT(index);
 }
 
 bool inline read(const int index, const uint64_t bitboard) {
@@ -27,7 +27,7 @@ square getIndexFromInput(char notation[]) {
     int rankIndex = notation[0] - 'a';
     square target = fileIndex + rankIndex;
 
-    if (target < A1 || target > H8) return invalid; // target is of type square: unsigned - never negative
+    if (target > H8) return invalid; // 'target' is unsigned: no need to check '< A1'
     return target;
 }
 
@@ -36,11 +36,14 @@ uint64_t computeCastlingBitboard(gameState_s* state) { // state->castlingRights[
 
     const int sideOffset      = state->playerToMove == white ?  0 : 3;
     const square kingStartPos = state->playerToMove == white ? E1 : E8;
+    const square queenSide = state->playerToMove == white ? C1 : C8;
+    const square kingSide = state->playerToMove == white ? G1 : G8;
 
     if(!(0b000010 << sideOffset & state->castlingRights)) // king has moved --> no castling
         return 0;
 
     // check if rook has been captured
+
 
     if(!read(kingStartPos, state->bitboard[state->playerToMove][king]))
         state->castlingRights |= 0b000010 << sideOffset;
@@ -49,12 +52,12 @@ uint64_t computeCastlingBitboard(gameState_s* state) { // state->castlingRights[
 }
 
 
-piece validatePiece(gameState_s* state, const square startSquare, const square endSquare) {
-    if (startSquare == invalid || endSquare == invalid)
+piece validatePiece(gameState_s* state, const square start, const square end) {
+    if (start == invalid || end == invalid)
         return noPiece;
 
-    piece piece = state->pieceLookup[startSquare];
-    if (piece == noPiece || !(state->bitboard[state->playerToMove][piece] & BIT(startSquare)))
+    piece piece = state->pieceLookup[start];
+    if (piece == noPiece || !(state->bitboard[state->playerToMove][piece] & BIT(start)))
         return noPiece;
 
     return piece;
@@ -87,18 +90,29 @@ int main(int argc, char** argv) {
 
         const square startSquare = getIndexFromInput(startInput);
         const square endSquare = getIndexFromInput(endInput);
-
         piece piece = validatePiece(&state, startSquare, endSquare);
         if(piece == noPiece) {
             strcpy(afterTurnMsg, "Invalid move.");
             continue;
         }
+        uint16_t move = startSquare | endSquare << 6;
 
-        if (1/* MOVE IS LEGAL */) {
-            state.playerToMove ^= 1; // change turn
-            // make move
+        bool (*testMove)(gameState_s*, attackMap_s*, uint16_t move);
+        switch (piece) {
+            case pawn:   testMove = &pawnMoves;   break;
+            case knight: testMove = &knightMoves; break;
+            case bishop: testMove = &bishopMoves; break;
+            case rook:   testMove = &rookMoves;   break;
+            case queen:  testMove = &queenMoves;  break;
+            case king:   testMove = &kingMoves;   break;
+            default: __builtin_unreachable();
+        }
+        bool isLegal = testMove(&state, &attackMap, move);
+
+        if (isLegal) {
+            state.playerToMove ^= 1;
         } else {
-            strcpy(afterTurnMsg, "Invalid move.");
+            //strcpy(afterTurnMsg, "Invalid move.");
         }
 
     } while(true);
