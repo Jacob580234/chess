@@ -14,6 +14,9 @@ bool kingIsInCheck(gameState_s* state, attackMap_s* map);
 bool moveIsLegal(gameState_s* state, attackMap_s* map, uint16_t move, void (*simulateMove)(gameState_s*, attackMap_s*, uint16_t));
 void simulateMoveGeneral(gameState_s* copy, attackMap_s* map, uint16_t move);
 
+void updateCastlingRights(gameState_s* state, attackMap_s* map, square start, square end);
+uint64_t castlingBitboard(gameState_s* state, attackMap_s* map);
+
 bool pawnMoves(gameState_s* state, attackMap_s* map, uint16_t move);
 bool knightMoves(gameState_s* state, attackMap_s* map, uint16_t move);
 bool kingMoves(gameState_s* state, attackMap_s* map, uint16_t move);
@@ -24,6 +27,8 @@ square getKingIndex(uint64_t bitboard);
 uint64_t rookPseudoLegal(gameState_s* state, attackMap_s* map, square start);
 uint64_t bishopPseudoLegal(gameState_s* state, attackMap_s* map, square start);
 uint64_t queenPseudoLegal(gameState_s* state, attackMap_s* map, square start);
+uint64_t knightPseudoLegal(gameState_s* state, attackMap_s* map, square start);
+uint64_t kingPseudoLegal(gameState_s* state, attackMap_s* map, square start);
 
 uint64_t ANDN(uint64_t negOp1, uint64_t op2);
 int TZCNT(uint64_t src);

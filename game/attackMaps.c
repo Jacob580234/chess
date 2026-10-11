@@ -4,6 +4,8 @@
 #include "move.h"
 #include <string.h>
 
+#include "print.h"
+
 
 uint64_t inline PEXT(uint64_t mask, uint64_t src) {
     uint64_t result;
@@ -32,7 +34,7 @@ void initAttackMaps(attackMap_s* attackMap) {
     initKingMaps(attackMap->king);
     initRookMaps(attackMap->rookPextTable, attackMap->rookBlockerMask, attackMap->rookPextTableOffset);
     initBishopMaps(attackMap->bishopPextTable, attackMap->bishopBlockerMask, attackMap->bishopPextTableOffset);
-    initCastlingMap(attackMap->castling);
+    initCastlingMaps(attackMap->castlingMask, attackMap->castlingPath);
 }
 
 
@@ -94,22 +96,6 @@ void initKnightMaps(uint64_t bitboard[]) {
         }
     }
 }
-
-/*
-void initPawnBitboards(uint64_t bitboard[][2][NUM_SQUARES]) {
-    initPawnAttackBitboards(bitboard[0]);
-    initPawnMoveBitboards(bitboard[1]);
-}
-
-void initPawnMoveBitboards(uint64_t bitboard[][NUM_SQUARES]) {
-
-    for (square square = A2; square <= H2; square++) bitboard[white][square] = (BIT(square) << 8) | (BIT(square) << 16);
-    for (square square = A7; square <= H7; square++) bitboard[black][square] = (BIT(square) >> 8) | (BIT(square) >> 16);
-
-    for (square square = A3; square <= H7; square++) bitboard[white][square] = BIT(square) << 8;
-    for (square square = H6; square >= A2; square--) bitboard[black][square] = BIT(square) >> 8;
-}
-*/
 
 
 void initPawnMaps(uint64_t bitboard[][NUM_SQUARES]) {
@@ -203,14 +189,19 @@ uint64_t generateSlidingPieceMoves(uint64_t blockers, int square, int len[], int
 }
 
 
-void initCastlingMap(uint64_t map[]) {
-    memset(map, 0, NUM_SQUARES * sizeof(uint64_t));
+void initCastlingMaps(uint64_t mask[], uint64_t path[]) {
+    memset(mask, 0, NUM_SQUARES * sizeof(uint64_t));
 
-    map[A1] = 0b0111; // white queen side
-    map[E1] = 0b0011; // white both
-    map[H1] = 0b1011; // white king side
+    mask[A1] = 0b1101; // white queen side
+    mask[E1] = 0b1100; // white both
+    mask[H1] = 0b1110; // white king side
 
-    map[A8] = 0b1101; // black queen side
-    map[E8] = 0b1100; // black both
-    map[H8] = 0b1110; // black king side
+    mask[A8] = 0b0111; // black queen side
+    mask[E8] = 0b0011; // black both
+    mask[H8] = 0b1011; // black king side
+
+    path[WHITE_OOO] = BIT(B1) | BIT(C1) | BIT(D1);
+    path[WHITE_OO]  = BIT(F1) | BIT(G1);
+    path[BLACK_OOO] = BIT(B8) | BIT(C8) | BIT(D8);
+    path[BLACK_OO]  = BIT(F8) | BIT(G8);
 }

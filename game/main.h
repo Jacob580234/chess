@@ -16,7 +16,6 @@
 #define START(move) ((move) & 0b111111)
 #define END(move) ((move) >> 6 & 0b111111)
 
-
 #define DOUBLE_PAWN_PUSH 0b0001000000000000
 #define KING_CASTLE      0b0010000000000000
 #define QUEEN_CASTLE     0b0011000000000000
@@ -31,6 +30,11 @@
 #define BISHOP_PROMO_CAP 0b1101000000000000
 #define ROOK_PROMO_CAP   0b1110000000000000
 #define QUEEN_PROMO_CAP  0b1111000000000000
+
+#define WHITE_OOO 0
+#define WHITE_OO  1
+#define BLACK_OOO 2
+#define BLACK_OO  3
 
 #include <stdbool.h>
 
@@ -48,7 +52,7 @@ typedef enum: uint8_t { A1, B1, C1, D1, E1, F1, G1, H1,
 
 typedef struct {
     uint64_t bitboard[2][NUM_PIECE_TYPES];
-    uint64_t piecesForSide[2]; // all pieces of a certain color. used to check blocking / capturing. Subject for removal
+    uint64_t piecesForSide[2];
     uint64_t allPieces;
     piece pieceLookup[NUM_SQUARES];
 
@@ -60,7 +64,7 @@ typedef struct {
 
 // ....
 
-uint64_t clear (int index, uint64_t* bitboard);
+void clear (int index, uint64_t* bitboard);
 void set(int index, uint64_t* bitboard);
 bool read(int index, uint64_t bitboard);
 square getIndexFromInput(char notation[]);

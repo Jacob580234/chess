@@ -7,9 +7,10 @@
 #include "FEN.h"
 #include "move.h"
 #include "print.h"
+#include "../engine/moveGen.h"
 
 
-void inline set(const int index, uint64_t* bitboard) { // void?
+void inline set(const int index, uint64_t* bitboard) {
     *bitboard |= BIT(index);
 }
 
@@ -17,8 +18,8 @@ bool inline read(const int index, const uint64_t bitboard) {
     return (bitboard >> index) & 1ULL;
 }
 
-uint64_t inline clear (const int index, uint64_t* bitboard) {
-    return *bitboard &= ~BIT(index);
+void inline clear (const int index, uint64_t* bitboard) {
+    *bitboard &= ~BIT(index);
 }
 
 
@@ -31,28 +32,8 @@ square getIndexFromInput(char notation[]) {
     return target;
 }
 
-// if(kingIndex == kingStartPos) bitboard |= computeCastlingBitboard
-uint64_t computeCastlingBitboard(gameState_s* state) { // state->castlingRights[white][queen] ?? hasMoved is needed
 
-    const int sideOffset      = state->playerToMove == white ?  0 : 3;
-    const square kingStartPos = state->playerToMove == white ? E1 : E8;
-    const square queenSide = state->playerToMove == white ? C1 : C8;
-    const square kingSide = state->playerToMove == white ? G1 : G8;
-
-    if(!(0b000010 << sideOffset & state->castlingRights)) // king has moved --> no castling
-        return 0;
-
-    // check if rook has been captured
-
-
-    if(!read(kingStartPos, state->bitboard[state->playerToMove][king]))
-        state->castlingRights |= 0b000010 << sideOffset;
-
-    return true;
-}
-
-
-piece validatePiece(gameState_s* state, const square start, const square end) {
+piece getPieceOnSquare(gameState_s* state, const square start, const square end) {
     if (start == invalid || end == invalid)
         return noPiece;
 
@@ -66,18 +47,22 @@ piece validatePiece(gameState_s* state, const square start, const square end) {
 
 int main(int argc, char** argv) {
 
-    gameState_s state;
-
     if (argc > 2) {
         printf("\n\n%s: enclose FEN in double quotes\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
-    char* FEN = (argc == 2 ? argv[1] : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    parseFEN(FEN, &state);
+    gameState_s state;
+    attackMap_s map;
+    initAttackMaps(&map);
 
-    attackMap_s attackMap;
-    initAttackMaps(&attackMap);
+    char* FEN = (argc == 2 ? argv[1] : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1");
+    parseFEN(FEN, &state, &map);
+
+    uint16_t moves[218];
+    int n = generateMoves(&state, &map, moves);
+    printf("\nmoves: %d\n", n);
+    exit(0);
 
     char startInput[3], endInput[3];
     char afterTurnMsg[16];
@@ -90,7 +75,7 @@ int main(int argc, char** argv) {
 
         const square startSquare = getIndexFromInput(startInput);
         const square endSquare = getIndexFromInput(endInput);
-        piece piece = validatePiece(&state, startSquare, endSquare);
+        piece piece = getPieceOnSquare(&state, startSquare, endSquare);
         if(piece == noPiece) {
             strcpy(afterTurnMsg, "Invalid move.");
             continue;
@@ -107,7 +92,7 @@ int main(int argc, char** argv) {
             case king:   testMove = &kingMoves;   break;
             default: __builtin_unreachable();
         }
-        bool isLegal = testMove(&state, &attackMap, move);
+        bool isLegal = testMove(&state, &map, move);
 
         if (isLegal) {
             state.playerToMove ^= 1;

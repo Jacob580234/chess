@@ -1,7 +1,5 @@
 #include "move.h"
 #include <stdint.h>
-#include <stdio.h>
-
 #include "main.h"
 #include "attackMaps.h"
 #include "print.h"
@@ -25,7 +23,8 @@ square inline getKingIndex(uint64_t bitboard) {
     return TZCNT(bitboard);
 }
 
-
+// which pieces usually check the king? put them first for optimal short-circuiting
+// maybe do one of these per game phase since rooks probably check more in endgame etc
 bool squareIsAttacked(gameState_s* restrict state, attackMap_s* restrict map, const square square) {
 
     const side opponent = state->playerToMove^1;
@@ -63,6 +62,14 @@ bool inline kingIsInCheck(gameState_s* restrict state, attackMap_s* restrict map
     return squareIsAttacked(state, map, kingIndex);
 }
 
+
+uint64_t inline knightPseudoLegal(gameState_s* restrict state, attackMap_s* restrict map, const square start) {
+    return ANDN(map->knight[start], state->piecesForSide[state->playerToMove]);
+}
+
+uint64_t inline kingPseudoLegal(gameState_s* restrict state, attackMap_s* restrict map, const square start) {
+    return ANDN(map->king[start],state->piecesForSide[state->playerToMove]);
+}
 
 uint64_t inline rookPseudoLegal(gameState_s* restrict state, attackMap_s* restrict map, const square start) {
     uint32_t index = map->rookPextTableOffset[start] + PEXT(map->rookBlockerMask[start], state->allPieces);
@@ -126,19 +133,44 @@ void updateGeneralBitboards(gameState_s* state, const uint16_t move) {
     state->allPieces = state->piecesForSide[white] | state->piecesForSide[black];
 }
 
+
+void inline updateCastlingRights(gameState_s* restrict state, attackMap_s* restrict map, const square start, const square end) {
+    if (state->castlingRights != 0b0000) { // if castling rights still exist
+        uint8_t mask = map->castlingMask[start] | map->castlingMask[end]; // extract relevant to rooks / king
+        if(mask != 0b0000) // check if anything happened
+            state->castlingRights &= mask; // remove appropriate rights
+    }
+}
+
+
+// TODO: REWORK
+uint64_t castlingBitboard(gameState_s* restrict state, attackMap_s* restrict map) {
+    uint8_t ownRights = state->playerToMove == white ? (state->castlingRights & 0b0011) : (state->castlingRights >> 2);
+    if (ownRights == 0b00) return 0;
+
+    square queenSide, kingSide;
+    state->playerToMove == white ? (queenSide = C1, kingSide = G1) : (queenSide = C8, kingSide = G8);
+
+    uint64_t bitboard = 0;
+    if(read(1, ownRights)) {
+        uint64_t pathIndex = state->playerToMove == white ? WHITE_OOO : BLACK_OOO;
+        if(!(map->castlingPath[pathIndex] & state->allPieces)) bitboard |= BIT(queenSide);
+
+    }
+    if(read(0, ownRights)) {
+        uint64_t pathIndex = state->playerToMove == white ? WHITE_OO : BLACK_OO;
+        if(!(map->castlingPath[pathIndex] & state->allPieces)) bitboard |= BIT(kingSide);
+    }
+
+    return bitboard;
+}
+
+
 // separate functions for castling and en passant moves? and perhaps promotion?
 void simulateMoveGeneral(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move) {
 
     const square start = START(move);
     const square end = END(move);
-    
-    if (state->castlingRights != 0b0000) {
-        uint8_t mask = map->castling[start] | map->castling[end];
-        if(mask != 0b0000) {
-            state->castlingRights &= ~mask;
-            printBitboard(state->castlingRights);
-        }
-    }
 
     updatePiecePosition(state, move);
     handleCapture(state, end);
@@ -167,8 +199,17 @@ void simulateMovePawn(gameState_s* restrict state, attackMap_s* restrict map, co
 }
 
 
-void simulateMoveKing(gameState_s* state, const square start, const square end) {
-    // needs to handle moving rook. also check for if in check for castling? perhaps in "kingMoves" function, not this one
+void simulateMoveKing(gameState_s* restrict state, attackMap_s* restrict map, uint16_t move) {
+    const square start = START(move);
+    const square end = END(move);
+
+    if(map->king[start] & end) {
+        // normal
+    } else {
+        // castling
+    }
+
+
 }
 
 
@@ -184,7 +225,7 @@ bool pawnMoves(gameState_s* restrict state, attackMap_s* restrict map, const uin
     uint64_t oneSquareForward = state->playerToMove == white ? BIT(start) << 8 : BIT(start) >> 8;
     bool canMoveOne = ANDN(oneSquareForward, state->allPieces);
 
-    if (!(canMoveOne || isAttacking)) // if you cant move one, you cant move two; no matter
+    if (!canMoveOne && !isAttacking) // if you cant move one, you cant move two; no matter
         return false;
 
     bool isMovingOne = oneSquareForward == BIT(end);
@@ -217,16 +258,13 @@ bool knightMoves(gameState_s* restrict state, attackMap_s* restrict map, const u
 bool kingMoves(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move) {
     const square start = START(move);
     const square end = END(move);
-    // castling
-    // pseudoLegal |= castling
-    // if kingSquare != original: return 0;
-    // else check if (something)
 
-    // if (map->king[start] & actual_kingBitboard) then its a castling
     uint64_t pseudoLegal = ANDN(map->king[start], state->piecesForSide[state->playerToMove]);
+    pseudoLegal |= castlingBitboard(state, map);
+    updateCastlingRights(state, map, start, end);
     if(!read(end, pseudoLegal)) return false;
 
-    return true;
+    return moveIsLegal(state, map, move, &simulateMoveKing);
 }
 
 

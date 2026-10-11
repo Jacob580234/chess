@@ -30,30 +30,28 @@ bool kingIsValid(uint64_t bitboard) {
     return POPCNT(bitboard) == 1;
 }
 
-bool stateIsValid(gameState_s* state) {
+bool stateIsValid(gameState_s* state, attackMap_s* map) {
 
     if (!kingIsValid(state->bitboard[white][king])) return false;
     if (!kingIsValid(state->bitboard[black][king])) return false;
 
-    for (square square = A1; square < H1; square++) { // no pawns on the 1st rank
+    for (square square = A1; square <= H1; square++) { // no pawns on the 1st rank
         if (read(square, state->bitboard[white][pawn])) return false;
         if (read(square, state->bitboard[black][pawn])) return false;
     }
-    for (square square = A8; square < H8; square++) { // no pawns on the 8th rank
+    for (square square = A8; square <= H8; square++) { // no pawns on the 8th rank
         if (read(square, state->bitboard[white][pawn])) return false;
         if (read(square, state->bitboard[black][pawn])) return false;
     }
 
     if (state->fiftyMoveRule > 100) return false;
 
-    /*
-    attackMap_s* map;
+    // enemy king may not be in check
+    state->playerToMove ^= 1; // jank
+    bool enemyKingIsSafe = !kingIsInCheck(state, map);
     state->playerToMove ^= 1;
-    return !kingIsInCheck(state, map);
-    state->playerToMove ^= 1;
-    */
 
-    return true;
+    return enemyKingIsSafe;
 }
 
 
@@ -89,7 +87,7 @@ bool parsePosition(char* position, gameState_s* state) {
         }
         else return false;
     }
-    if(currentSquare != H1) return false; // TODO: doesnt work if first rank is empty
+    if(currentSquare != H1) return false; // TODO: is broken
 
     state->allPieces = state->piecesForSide[white] | state->piecesForSide[black];
 
@@ -111,10 +109,10 @@ bool parseCastling(char* castling, gameState_s* state) {
     if (*castling == '-') return true;
     for(;*castling; castling++) {
         switch (*castling) {
-            case 'K': state->castlingRights |= 0b0100; break;
-            case 'Q': state->castlingRights |= 0b1000; break;
-            case 'k': state->castlingRights |= 0b0001; break;
-            case 'q': state->castlingRights |= 0b0010; break;
+            case 'K': state->castlingRights |= 0b0001; break;
+            case 'Q': state->castlingRights |= 0b0010; break;
+            case 'k': state->castlingRights |= 0b0100; break;
+            case 'q': state->castlingRights |= 0b1000; break;
             default: return false;
         }
     }
@@ -124,18 +122,17 @@ bool parseCastling(char* castling, gameState_s* state) {
 
 bool parseEnPassant(char* enPassant, gameState_s* state) {
     if (*enPassant == '-') state->enPassantIndex = invalid;
-    else if (state->enPassantIndex = getIndexFromInput(enPassant) == invalid) return false;
+    else if ((state->enPassantIndex = getIndexFromInput(enPassant)) == invalid) return false;
     return true;
 }
 
 
 bool parseHalfMoves(char* halfMoves, gameState_s* state) {
-    if (state->fiftyMoveRule = strToInt(halfMoves) == -1) return false;
+    if ((int)(state->fiftyMoveRule = strToInt(halfMoves)) == -1) return false;
     return true;
 }
 
-
-void parseFEN(char* FEN, gameState_s* state) {
+void parseFEN(char* FEN, gameState_s* state, attackMap_s* map) {
 
     char position[72], turn, castling[5], enPassant[3], halfMoves[4], fullMoves[5]; // fullMoves unused atp
 
@@ -144,15 +141,10 @@ void parseFEN(char* FEN, gameState_s* state) {
 
     memset(state->bitboard, 0, sizeof(state->bitboard) + sizeof(state->piecesForSide) + sizeof(state->allPieces)); // clear bitboards
 
-    if (!parsePosition(position, state))    goto invalid;
-    if (!parseTurn(turn, state))            goto invalid;
-    if (!parseCastling(castling, state))    goto invalid;
-    if (!parseEnPassant(enPassant, state))  goto invalid;
-    if (!parseHalfMoves(halfMoves, state))  goto invalid;
-
-    //if(!stateIsValid(state))                goto invalid;
-
-    return;
+    if(parsePosition(position, state) && parseTurn(turn, state) && parseCastling(castling, state) &&
+    parseEnPassant(enPassant, state) && parseHalfMoves(halfMoves, state) && stateIsValid(state, map)) {
+        return;
+    }
 
     invalid:
         printf("Invalid FEN string\n");

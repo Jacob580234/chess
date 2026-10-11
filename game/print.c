@@ -1,7 +1,16 @@
 #include "main.h"
 #include "print.h"
 #include <stdio.h>
-#include <stdlib.h>
+
+
+void printBinary(uint64_t num) {
+    printf(" ");
+    for (int i = 63; i >= 0; i--) {
+        if ((63 - i) % 8 == 0) printf(" ");
+        printf("%llu", (num >> i) & 1);
+    }
+}
+
 
 void printPieceLookup(piece* pieceLookup) {
     for (int i = 8; i > 0; i--) {
