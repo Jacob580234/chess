@@ -46,12 +46,8 @@ bool stateIsValid(gameState_s* state, attackMap_s* map) {
 
     if (state->fiftyMoveRule > 100) return false;
 
-    // enemy king may not be in check
-    state->playerToMove ^= 1; // jank
-    bool enemyKingIsSafe = !kingIsInCheck(state, map);
-    state->playerToMove ^= 1;
-
-    return enemyKingIsSafe;
+    const square enemyKingIndex = getKingIndex(state->bitboard[state->playerToMove^1][king]);
+    return squareIsAttacked(state, map, enemyKingIndex); // only checks opponents pieces, so return inverse to get whether opponent king is in check
 }
 
 
@@ -109,10 +105,10 @@ bool parseCastling(char* castling, gameState_s* state) {
     if (*castling == '-') return true;
     for(;*castling; castling++) {
         switch (*castling) {
-            case 'K': state->castlingRights |= 0b0001; break;
-            case 'Q': state->castlingRights |= 0b0010; break;
-            case 'k': state->castlingRights |= 0b0100; break;
-            case 'q': state->castlingRights |= 0b1000; break;
+            case 'Q': state->castlingRights |= BIT(WHITE_OOO); break;
+            case 'K': state->castlingRights |= BIT(WHITE_OO); break;
+            case 'q': state->castlingRights |= BIT(BLACK_OOO); break;
+            case 'k': state->castlingRights |= BIT(BLACK_OO); break;
             default: return false;
         }
     }

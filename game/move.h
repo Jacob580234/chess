@@ -10,6 +10,7 @@
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 bool kingIsInCheck(gameState_s* state, attackMap_s* map);
+bool squareIsAttacked(gameState_s* state, attackMap_s* map, square square);
 
 bool moveIsLegal(gameState_s* state, attackMap_s* map, uint16_t move, void (*simulateMove)(gameState_s*, attackMap_s*, uint16_t));
 void simulateMoveGeneral(gameState_s* copy, attackMap_s* map, uint16_t move);
@@ -29,6 +30,8 @@ uint64_t bishopPseudoLegal(gameState_s* state, attackMap_s* map, square start);
 uint64_t queenPseudoLegal(gameState_s* state, attackMap_s* map, square start);
 uint64_t knightPseudoLegal(gameState_s* state, attackMap_s* map, square start);
 uint64_t kingPseudoLegal(gameState_s* state, attackMap_s* map, square start);
+
+void handleCapture(gameState_s* state, square end);
 
 uint64_t ANDN(uint64_t negOp1, uint64_t op2);
 int TZCNT(uint64_t src);

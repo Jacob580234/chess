@@ -1,13 +1,14 @@
-#include <stdio.h>
+
 #include <string.h>
 #include "../game/move.h"
-#include "../game/print.h"
 #include "moveGen.h"
+
+#include "../game/print.h"
 
 
 int inline nextBit(uint64_t* bitboard) {
     int result = TZCNT(*bitboard);
-    clear(result, bitboard);
+    *bitboard ^= BIT(result);
     return result;
 }
 

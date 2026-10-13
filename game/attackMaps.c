@@ -190,15 +190,15 @@ uint64_t generateSlidingPieceMoves(uint64_t blockers, int square, int len[], int
 
 
 void initCastlingMaps(uint64_t mask[], uint64_t path[]) {
-    memset(mask, 0, NUM_SQUARES * sizeof(uint64_t));
+    memset(mask, 0xFF, NUM_SQUARES * sizeof(uint64_t));
 
-    mask[A1] = 0b1101; // white queen side
-    mask[E1] = 0b1100; // white both
-    mask[H1] = 0b1110; // white king side
+    mask[A1] = ~BIT(WHITE_OOO);
+    mask[E1] = ~BIT(WHITE_OOO) | ~BIT(WHITE_OO);
+    mask[H1] = ~BIT(WHITE_OO);
 
-    mask[A8] = 0b0111; // black queen side
-    mask[E8] = 0b0011; // black both
-    mask[H8] = 0b1011; // black king side
+    mask[A8] = ~BIT(BLACK_OOO);
+    mask[E8] = ~BIT(BLACK_OOO) | ~BIT(BLACK_OO);
+    mask[H8] = ~BIT(BLACK_OO);
 
     path[WHITE_OOO] = BIT(B1) | BIT(C1) | BIT(D1);
     path[WHITE_OO]  = BIT(F1) | BIT(G1);

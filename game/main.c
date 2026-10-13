@@ -56,18 +56,18 @@ int main(int argc, char** argv) {
     attackMap_s map;
     initAttackMaps(&map);
 
-    char* FEN = (argc == 2 ? argv[1] : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1");
+    char* FEN = (argc == 2 ? argv[1] : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RN2K2R w KQkq - 0 1");
     parseFEN(FEN, &state, &map);
 
+    // ROOK: h1g1 --> g1h1 not allowed
     uint16_t moves[218];
-    int n = generateMoves(&state, &map, moves);
-    printf("\nmoves: %d\n", n);
-    exit(0);
 
     char startInput[3], endInput[3];
     char afterTurnMsg[16];
 
     do {
+        int n = generateMoves(&state, &map, moves); // TODO: REMOVE REMOVE REMOVE REMOVE REMOVE
+        printf("%d\n\n", n); // TODO: REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE
         sprintf(afterTurnMsg, "%s to move:", state.playerToMove == white ? "White" : "Black");
         printBoard(&state);
         printf("\n\n%s\n", afterTurnMsg);

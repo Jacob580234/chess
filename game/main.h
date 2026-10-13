@@ -36,6 +36,7 @@
 #define BLACK_OOO 2
 #define BLACK_OO  3
 
+
 #include <stdbool.h>
 
 typedef enum: uint8_t { white, black } side;

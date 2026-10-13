@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include "main.h"
 #include "attackMaps.h"
-#include "print.h"
 
 
 int inline TZCNT(uint64_t src) {
@@ -18,7 +17,7 @@ uint64_t inline ANDN(uint64_t op1, uint64_t op2Neg) {
     return result;
 }
 
-
+// perhaps make input be state and extract king bitboard in function to prevent misuse
 square inline getKingIndex(uint64_t bitboard) {
     return TZCNT(bitboard);
 }
@@ -91,9 +90,9 @@ bool moveIsLegal(gameState_s* restrict state, attackMap_s* restrict map, const u
     gameState_s afterMoveState = *state;
     simulateMove(&afterMoveState, map, move);
 
-    if (kingIsInCheck(&afterMoveState, map))
+    if (kingIsInCheck(&afterMoveState, map)) {
         return false;
-
+    }
     *state = afterMoveState;
     return true;
 }
@@ -111,57 +110,45 @@ void updatePiecePosition(gameState_s* state, uint16_t move) {
     uint64_t moveBitboard = BIT(origin) | BIT(target);
     state->bitboard[state->playerToMove][piece] ^= moveBitboard;
     state->piecesForSide[state->playerToMove] ^= moveBitboard;
-    state->allPieces ^= moveBitboard;
 }
 
 
-void handleCapture(gameState_s* state, const square end) {
-    piece opponentPiece = state->pieceLookup[end];
-    if (opponentPiece != noPiece) {
-        clear(end, &state->bitboard[state->playerToMove ^ 1][opponentPiece]);
-        clear(end, &state->piecesForSide[state->playerToMove ^ 1]);
-        state->fiftyMoveRule = 0; // reset 50-move rule on capture
+void inline handleCapture(gameState_s* state, const square end) {
+    uint64_t endBitboard = BIT(end);
+    if (endBitboard & state->piecesForSide[state->playerToMove^1]) {
+        piece opponentPiece = state->pieceLookup[end];
+        state->bitboard[state->playerToMove ^ 1][opponentPiece] ^= endBitboard;
+        state->piecesForSide[state->playerToMove ^ 1] ^= endBitboard;
+        state->fiftyMoveRule = 0;
     }
-}
-
-
-void updateGeneralBitboards(gameState_s* state, const uint16_t move) {
-    const square start = START(move);
-    const square end = END(move);
-    clear(start, &state->piecesForSide[state->playerToMove]);
-    set(end, &state->piecesForSide[state->playerToMove]);
-    state->allPieces = state->piecesForSide[white] | state->piecesForSide[black];
 }
 
 
 void inline updateCastlingRights(gameState_s* restrict state, attackMap_s* restrict map, const square start, const square end) {
-    if (state->castlingRights != 0b0000) { // if castling rights still exist
-        uint8_t mask = map->castlingMask[start] | map->castlingMask[end]; // extract relevant to rooks / king
-        if(mask != 0b0000) // check if anything happened
-            state->castlingRights &= mask; // remove appropriate rights
-    }
+    if (state->castlingRights != 0b0000)
+        state->castlingRights &= map->castlingMask[start] | map->castlingMask[end];
 }
 
 
-// TODO: REWORK
 uint64_t castlingBitboard(gameState_s* restrict state, attackMap_s* restrict map) {
-    uint8_t ownRights = state->playerToMove == white ? (state->castlingRights & 0b0011) : (state->castlingRights >> 2);
-    if (ownRights == 0b00) return 0;
+    if (state->castlingRights == 0b0000) return 0;
 
-    square queenSide, kingSide;
-    state->playerToMove == white ? (queenSide = C1, kingSide = G1) : (queenSide = C8, kingSide = G8);
+    /*
+    int ownRights;
+    if (state->playerToMove == white ? (ownRights = state->castlingRights & 0b0011) : (ownRights = state->castlingRights >> 2)) {
+        if(state->playerToMove == white ?
+    }
+    */
 
+    // maybe check if player to move has any rights, as to not check all this stuff when you cant castle anyway
     uint64_t bitboard = 0;
-    if(read(1, ownRights)) {
-        uint64_t pathIndex = state->playerToMove == white ? WHITE_OOO : BLACK_OOO;
-        if(!(map->castlingPath[pathIndex] & state->allPieces)) bitboard |= BIT(queenSide);
-
+    if (state->playerToMove == white) { // if/else can removed, would require variable assignment. this should be faster and is clearer
+        if(read(WHITE_OOO, state->castlingRights) && !(map->castlingPath[WHITE_OOO] & state->allPieces)) bitboard |= BIT(C1);
+        if(read(WHITE_OO,  state->castlingRights) && !(map->castlingPath[WHITE_OO]  & state->allPieces)) bitboard |= BIT(G1);
+    } else {
+        if(read(BLACK_OOO, state->castlingRights) && !(map->castlingPath[BLACK_OOO] & state->allPieces)) bitboard |= BIT(C8);
+        if(read(BLACK_OO,  state->castlingRights) && !(map->castlingPath[BLACK_OO]  & state->allPieces)) bitboard |= BIT(G8);
     }
-    if(read(0, ownRights)) {
-        uint64_t pathIndex = state->playerToMove == white ? WHITE_OO : BLACK_OO;
-        if(!(map->castlingPath[pathIndex] & state->allPieces)) bitboard |= BIT(kingSide);
-    }
-
     return bitboard;
 }
 
@@ -174,8 +161,6 @@ void simulateMoveGeneral(gameState_s* restrict state, attackMap_s* restrict map,
 
     updatePiecePosition(state, move);
     handleCapture(state, end);
-    updateGeneralBitboards(state, move);
-
 }
 
 
@@ -184,18 +169,23 @@ void simulateMovePawn(gameState_s* restrict state, attackMap_s* restrict map, co
     const square start = START(move);
     const square end = END(move);
 
-    piece pawn = state->pieceLookup[start];
-
     updatePiecePosition(state, move);
     handleCapture(state, end);
 
     if (end == state->enPassantIndex) {
         square opponentPawnIndex = state->playerToMove == white ? end + 8 : end - 8;
-        clear(opponentPawnIndex, &state->bitboard[state->playerToMove ^ 1][pawn]);
+        state->bitboard[state->playerToMove ^ 1][pawn] ^= BIT(opponentPawnIndex);
     }
 
-    updateGeneralBitboards(state, move);
     state->fiftyMoveRule = 0;
+}
+
+
+void makeMove(gameState_s* state, uint16_t move) {
+    const square end = END(move);
+    updatePiecePosition(state, move);
+    handleCapture(state, end);
+    state->allPieces = state->piecesForSide[white] | state->piecesForSide[black];
 }
 
 
@@ -204,12 +194,19 @@ void simulateMoveKing(gameState_s* restrict state, attackMap_s* restrict map, ui
     const square end = END(move);
 
     if(map->king[start] & end) {
-        // normal
+        handleCapture(state, end);
     } else {
-        // castling
+        square passThrough = start < end ? F1 : D1;
+        if (state->playerToMove == white)
+            passThrough += FILES * 7;
+
+        if (squareIsAttacked(state, map, passThrough)) {
+            return; // signal that it is not allowed (somehow)
+        }
+
+        // move corresponding rook
     }
-
-
+    updatePiecePosition(state, move);
 }
 
 
