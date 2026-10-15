@@ -7,7 +7,7 @@
 #include "FEN.h"
 #include "move.h"
 #include "print.h"
-#include "../engine/moveGen.h"
+#include "events.h"
 
 
 void inline set(const int index, uint64_t* bitboard) {
@@ -56,18 +56,14 @@ int main(int argc, char** argv) {
     attackMap_s map;
     initAttackMaps(&map);
 
-    char* FEN = (argc == 2 ? argv[1] : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RN2K2R w KQkq - 0 1");
+    char* FEN = (argc == 2 ? argv[1] : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     parseFEN(FEN, &state, &map);
-
-    // ROOK: h1g1 --> g1h1 not allowed
-    uint16_t moves[218];
 
     char startInput[3], endInput[3];
     char afterTurnMsg[16];
 
-    do {
-        int n = generateMoves(&state, &map, moves); // TODO: REMOVE REMOVE REMOVE REMOVE REMOVE
-        printf("%d\n\n", n); // TODO: REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE
+    while(!gameIsOver(&state, &map)) {
+
         sprintf(afterTurnMsg, "%s to move:", state.playerToMove == white ? "White" : "Black");
         printBoard(&state);
         printf("\n\n%s\n", afterTurnMsg);
@@ -75,13 +71,14 @@ int main(int argc, char** argv) {
 
         const square startSquare = getIndexFromInput(startInput);
         const square endSquare = getIndexFromInput(endInput);
+
         piece piece = getPieceOnSquare(&state, startSquare, endSquare);
         if(piece == noPiece) {
             strcpy(afterTurnMsg, "Invalid move.");
             continue;
         }
-        uint16_t move = startSquare | endSquare << 6;
 
+        uint16_t move = startSquare | endSquare << 6;
         bool (*testMove)(gameState_s*, attackMap_s*, uint16_t move);
         switch (piece) {
             case pawn:   testMove = &pawnMoves;   break;
@@ -100,6 +97,6 @@ int main(int argc, char** argv) {
             //strcpy(afterTurnMsg, "Invalid move.");
         }
 
-    } while(true);
+    }
 
 }

@@ -17,9 +17,9 @@ uint64_t inline ANDN(uint64_t op1, uint64_t op2Neg) {
     return result;
 }
 
-// perhaps make input be state and extract king bitboard in function to prevent misuse
-square inline getKingIndex(uint64_t bitboard) {
-    return TZCNT(bitboard);
+
+square inline getKingIndex(gameState_s* state) {
+    return TZCNT(state->bitboard[state->playerToMove][king]);
 }
 
 // which pieces usually check the king? put them first for optimal short-circuiting
@@ -57,7 +57,7 @@ bool squareIsAttacked(gameState_s* restrict state, attackMap_s* restrict map, co
 
 
 bool inline kingIsInCheck(gameState_s* restrict state, attackMap_s* restrict map) {
-    square kingIndex = getKingIndex(state->bitboard[state->playerToMove][king]);
+    square kingIndex = getKingIndex(state);
     return squareIsAttacked(state, map, kingIndex);
 }
 

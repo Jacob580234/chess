@@ -30,6 +30,7 @@ bool kingIsValid(uint64_t bitboard) {
     return POPCNT(bitboard) == 1;
 }
 
+
 bool stateIsValid(gameState_s* state, attackMap_s* map) {
 
     if (!kingIsValid(state->bitboard[white][king])) return false;
@@ -46,7 +47,16 @@ bool stateIsValid(gameState_s* state, attackMap_s* map) {
 
     if (state->fiftyMoveRule > 100) return false;
 
-    const square enemyKingIndex = getKingIndex(state->bitboard[state->playerToMove^1][king]);
+    bool whiteKingMoved = TZCNT(state->bitboard[white][king]) != E1;
+    bool blackKingMoved = TZCNT(state->bitboard[black][king]) != E8;
+
+    if(state->castlingRights & BIT(WHITE_OOO) && !(state->bitboard[white][rook] & BIT(A1)) && whiteKingMoved) return false;
+    if(state->castlingRights & BIT(WHITE_OO)  && !(state->bitboard[white][rook] & BIT(H1)) && whiteKingMoved) return false;
+
+    if(state->castlingRights & BIT(BLACK_OOO) && !(state->bitboard[black][rook] & BIT(A8)) && blackKingMoved) return false;
+    if(state->castlingRights & BIT(BLACK_OO)  && !(state->bitboard[black][rook] & BIT(H8)) && blackKingMoved) return false;
+
+    const square enemyKingIndex = TZCNT(state->bitboard[state->playerToMove^1][king]);
     return squareIsAttacked(state, map, enemyKingIndex); // only checks opponents pieces, so return inverse to get whether opponent king is in check
 }
 
@@ -63,27 +73,27 @@ int strToInt(char* str) { // atoi not adequate: must return error value on inval
 
 bool parsePosition(char* position, gameState_s* state) {
 
+    memset(state->bitboard, 0, sizeof(state->bitboard) + sizeof(state->piecesForSide) + sizeof(state->allPieces)); // clear bitboards
     for (square square = A1; square <= H8; square++)
         state->pieceLookup[square] = noPiece;
 
-    square currentSquare = invalid;
-    for (int rank = 7, file = 0; *position; file++, position++) { // FEN goes from A8 --> H1
-
-        currentSquare = rank * 8 + file;
+    int rank, file;
+    for (rank = 7, file = 0; *position; file++, position++) { // FEN goes from A8 --> H1
+        square currentSquare = rank * 8 + file;
         char c = *position;
 
-        if (c == '/' && file == 8) { rank--, file = -1;  } // go to starting point of previous rank
-        else if (isValidDigit(c))  { file += c - '0' - 1;} // skip c amount of files
+        if (c == '/' && file == 8) { rank--, file = -1;   } // go to starting point of previous rank
+        else if (isValidDigit(c))  { file += c - '0' - 1; } // skip c amount of files
         else if (isValidLetter(c)) {
             piece piece = charToPiece(c);
             side side = (c <= 'Z' ? white : black);
             set(currentSquare, &state->bitboard[side][piece]);
-            state->piecesForSide[side] |= BIT(currentSquare);
+            set(currentSquare, &state->piecesForSide[side]);
             state->pieceLookup[currentSquare] = piece;
         }
         else return false;
     }
-    if(currentSquare != H1) return false; // TODO: is broken
+    if((rank * 8 + file - 1) != H1) return false;
 
     state->allPieces = state->piecesForSide[white] | state->piecesForSide[black];
 
@@ -128,21 +138,25 @@ bool parseHalfMoves(char* halfMoves, gameState_s* state) {
     return true;
 }
 
+
 void parseFEN(char* FEN, gameState_s* state, attackMap_s* map) {
 
     char position[72], turn, castling[5], enPassant[3], halfMoves[4], fullMoves[5]; // fullMoves unused atp
 
     int parsedCount = sscanf(FEN, "%s %c %s %s %s %s", position, &turn, castling, enPassant, halfMoves, fullMoves);
-    if (parsedCount != 6) goto invalid;
 
-    memset(state->bitboard, 0, sizeof(state->bitboard) + sizeof(state->piecesForSide) + sizeof(state->allPieces)); // clear bitboards
-
-    if(parsePosition(position, state) && parseTurn(turn, state) && parseCastling(castling, state) &&
-    parseEnPassant(enPassant, state) && parseHalfMoves(halfMoves, state) && stateIsValid(state, map)) {
-        return;
-    }
-
-    invalid:
+    if(parsedCount != 6                 ||
+      !parsePosition(position, state)   ||
+      !parseTurn(turn, state)           ||
+      !parseCastling(castling, state)   ||
+      !parseEnPassant(enPassant, state) ||
+      !parseHalfMoves(halfMoves, state)) {
         printf("Invalid FEN string\n");
         exit(EXIT_FAILURE);
+    }
+
+    if(!stateIsValid(state, map)) {
+        printf("Illegal position\n");
+        exit(EXIT_FAILURE);
+    }
 }

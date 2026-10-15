@@ -24,7 +24,7 @@ bool kingMoves(gameState_s* state, attackMap_s* map, uint16_t move);
 bool rookMoves(gameState_s* state, attackMap_s* map, uint16_t move);
 bool bishopMoves(gameState_s* state, attackMap_s* map, uint16_t move);
 bool queenMoves(gameState_s* state, attackMap_s* map, uint16_t move);
-square getKingIndex(uint64_t bitboard);
+square getKingIndex(gameState_s* state);
 uint64_t rookPseudoLegal(gameState_s* state, attackMap_s* map, square start);
 uint64_t bishopPseudoLegal(gameState_s* state, attackMap_s* map, square start);
 uint64_t queenPseudoLegal(gameState_s* state, attackMap_s* map, square start);

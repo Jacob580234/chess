@@ -3,8 +3,6 @@
 #include "../game/move.h"
 #include "moveGen.h"
 
-#include "../game/print.h"
-
 
 int inline nextBit(uint64_t* bitboard) {
     int result = TZCNT(*bitboard);
@@ -25,9 +23,9 @@ uint64_t inline fetchMoves(gameState_s* restrict state, attackMap_s* restrict ma
 }
 
 
-void generateKingMoves(gameState_s* state, attackMap_s* map, uint16_t moves[], uint64_t cpyKingBoard, int *index) {
+void generateKingMoves(gameState_s* state, attackMap_s* map, uint16_t moves[], int *index) {
 
-    int startSquare = getKingIndex(cpyKingBoard);
+    int startSquare = getKingIndex(state);
     uint64_t moveBitboard = kingPseudoLegal(state, map, startSquare);
 
     while(moveBitboard) {
@@ -63,8 +61,10 @@ void generatePawnMoves(gameState_s* state, attackMap_s* map, uint16_t moves[], u
 
 
 int generateMoves(gameState_s* restrict state, attackMap_s* restrict map, uint16_t moves[]) {
-    uint64_t cpyBoards[6];
-    memcpy(cpyBoards, state->bitboard[state->playerToMove], sizeof(state->bitboard[state->playerToMove])); // copy bitboards as 'nextBit' alters them
+    uint64_t cpyBoards[5];
+
+    // atp manually assigning each one to a copy is probably faster
+    memcpy(cpyBoards, state->bitboard[state->playerToMove], sizeof(state->bitboard[state->playerToMove]) - sizeof(state->bitboard[state->playerToMove][king])); // copy bitboards as 'nextBit' alters them
     int n = 0;
 
     for (piece piece = knight; piece <= queen; piece++) {
@@ -84,7 +84,7 @@ int generateMoves(gameState_s* restrict state, attackMap_s* restrict map, uint16
     }
 
     generatePawnMoves(state, map, moves, cpyBoards[pawn], &n);
-    generateKingMoves(state, map, moves, cpyBoards[king], &n);
+    generateKingMoves(state, map, moves, &n);
 
     return n;
 }

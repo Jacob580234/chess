@@ -193,11 +193,11 @@ void initCastlingMaps(uint64_t mask[], uint64_t path[]) {
     memset(mask, 0xFF, NUM_SQUARES * sizeof(uint64_t));
 
     mask[A1] = ~BIT(WHITE_OOO);
-    mask[E1] = ~BIT(WHITE_OOO) | ~BIT(WHITE_OO);
+    mask[E1] = ~BIT(WHITE_OOO) & ~BIT(WHITE_OO);
     mask[H1] = ~BIT(WHITE_OO);
 
     mask[A8] = ~BIT(BLACK_OOO);
-    mask[E8] = ~BIT(BLACK_OOO) | ~BIT(BLACK_OO);
+    mask[E8] = ~BIT(BLACK_OOO) & ~BIT(BLACK_OO);
     mask[H8] = ~BIT(BLACK_OO);
 
     path[WHITE_OOO] = BIT(B1) | BIT(C1) | BIT(D1);
