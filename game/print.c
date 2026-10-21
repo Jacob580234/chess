@@ -4,7 +4,7 @@
 
 
 void printBinary(uint64_t num) {
-    printf(" ");
+    printf("\n");
     for (int i = 63; i >= 0; i--) {
         if ((63 - i) % 8 == 0) printf(" ");
         printf("%llu", (num >> i) & 1);

@@ -4,9 +4,7 @@
 #include "events.h"
 #include "../engine/moveGen.h" // move nextBit into something else
 
-// combine below two to something like "gameIsOver" or something, that first checks if king cant move, if it cant, check
-// if its in check, if it isnt, check stalemate. means no need to calculate if king can move twice in both functions
-// bool gameIsOver():
+
 bool gameIsOver(gameState_s* state, attackMap_s* map) {
     if(!kingCanMove(state, map)) {
         if (kingIsInCheck(state, map))

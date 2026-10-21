@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "main.h"
 #include "attackMaps.h"
+#include "print.h"
 
 
 int inline TZCNT(uint64_t src) {
@@ -246,7 +247,7 @@ bool pawnMoves(gameState_s* restrict state, attackMap_s* restrict map, const uin
 bool knightMoves(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move) {
     const square start = START(move);
     const square end = END(move);
-    uint64_t pseudoLegal = ANDN(map->knight[start], state->piecesForSide[state->playerToMove]);
+    uint64_t pseudoLegal = knightPseudoLegal(state, map, start);
     if(!read(end, pseudoLegal)) return false;
     return moveIsLegal(state, map, move, &simulateMoveGeneral);
 }
@@ -256,9 +257,9 @@ bool kingMoves(gameState_s* restrict state, attackMap_s* restrict map, const uin
     const square start = START(move);
     const square end = END(move);
 
-    uint64_t pseudoLegal = ANDN(map->king[start], state->piecesForSide[state->playerToMove]);
+    uint64_t pseudoLegal = kingPseudoLegal(state, map, start);
     pseudoLegal |= castlingBitboard(state, map);
-    updateCastlingRights(state, map, start, end);
+    updateCastlingRights(state, map, start, end); // TODO: shouldnt be here
     if(!read(end, pseudoLegal)) return false;
 
     return moveIsLegal(state, map, move, &simulateMoveKing);

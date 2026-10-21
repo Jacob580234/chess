@@ -16,4 +16,6 @@ add_executable(chess_v2 game/main.c
         engine/moveGen.c
         engine/moveGen.h
         game/events.c
-        game/events.h)
+        game/events.h
+        test/performance/perf.c
+        test/logic/test.c)

@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
         }
 
         uint16_t move = startSquare | endSquare << 6;
-        bool (*testMove)(gameState_s*, attackMap_s*, uint16_t move);
+        bool (*testMove)(gameState_s*, attackMap_s*, uint16_t);
         switch (piece) {
             case pawn:   testMove = &pawnMoves;   break;
             case knight: testMove = &knightMoves; break;

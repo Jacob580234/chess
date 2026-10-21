@@ -50,11 +50,11 @@ bool stateIsValid(gameState_s* state, attackMap_s* map) {
     bool whiteKingMoved = TZCNT(state->bitboard[white][king]) != E1;
     bool blackKingMoved = TZCNT(state->bitboard[black][king]) != E8;
 
-    if(state->castlingRights & BIT(WHITE_OOO) && !(state->bitboard[white][rook] & BIT(A1)) && whiteKingMoved) return false;
-    if(state->castlingRights & BIT(WHITE_OO)  && !(state->bitboard[white][rook] & BIT(H1)) && whiteKingMoved) return false;
+    if(state->castlingRights & BIT(WHITE_OOO) && (!(state->bitboard[white][rook] & BIT(A1)) || whiteKingMoved)) return false;
+    if(state->castlingRights & BIT(WHITE_OO)  && (!(state->bitboard[white][rook] & BIT(H1)) || whiteKingMoved)) return false;
 
-    if(state->castlingRights & BIT(BLACK_OOO) && !(state->bitboard[black][rook] & BIT(A8)) && blackKingMoved) return false;
-    if(state->castlingRights & BIT(BLACK_OO)  && !(state->bitboard[black][rook] & BIT(H8)) && blackKingMoved) return false;
+    if(state->castlingRights & BIT(BLACK_OOO) && (!(state->bitboard[black][rook] & BIT(A8)) || blackKingMoved)) return false;
+    if(state->castlingRights & BIT(BLACK_OO)  && (!(state->bitboard[black][rook] & BIT(H8)) || blackKingMoved)) return false;
 
     const square enemyKingIndex = TZCNT(state->bitboard[state->playerToMove^1][king]);
     return squareIsAttacked(state, map, enemyKingIndex); // only checks opponents pieces, so return inverse to get whether opponent king is in check
@@ -116,9 +116,9 @@ bool parseCastling(char* castling, gameState_s* state) {
     for(;*castling; castling++) {
         switch (*castling) {
             case 'Q': state->castlingRights |= BIT(WHITE_OOO); break;
-            case 'K': state->castlingRights |= BIT(WHITE_OO); break;
+            case 'K': state->castlingRights |= BIT(WHITE_OO);  break;
             case 'q': state->castlingRights |= BIT(BLACK_OOO); break;
-            case 'k': state->castlingRights |= BIT(BLACK_OO); break;
+            case 'k': state->castlingRights |= BIT(BLACK_OO);  break;
             default: return false;
         }
     }

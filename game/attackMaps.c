@@ -4,8 +4,6 @@
 #include "move.h"
 #include <string.h>
 
-#include "print.h"
-
 
 uint64_t inline PEXT(uint64_t mask, uint64_t src) {
     uint64_t result;
