@@ -18,4 +18,6 @@ add_executable(chess_v2 game/main.c
         game/events.c
         game/events.h
         test/performance/perf.c
-        test/logic/test.c)
+        test/logic/test.c
+        test/performance/perf.h
+        test/logic/test.h)

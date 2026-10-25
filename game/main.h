@@ -1,17 +1,14 @@
 #ifndef CHESS_V2_MAIN_H
 #define CHESS_V2_MAIN_H
+
 #include <stdint.h>
-#include <stdlib.h>
+#include <stdbool.h>
 
 #define NUM_PIECE_TYPES 6
 #define FILES 8
 #define RANKS 8
 #define NUM_SQUARES 64
 #define BIT(n) (1ULL << (n))
-#define ERROR do {                                                                                 \
-                  printf("\n\nError from %s, line %d in %s\n", __FILE_NAME__, __LINE__, __func__); \
-                  exit(EXIT_FAILURE);                                                              \
-              } while(0)
 
 #define START(move) ((move) & 0b111111)
 #define END(move) ((move) >> 6 & 0b111111)
@@ -36,9 +33,6 @@
 #define BLACK_OOO 2
 #define BLACK_OO  3
 
-
-#include <stdbool.h>
-
 typedef enum: uint8_t { white, black } side;
 typedef enum: uint8_t { pawn, knight, bishop, rook, queen, king, noPiece } piece;
 typedef enum: uint8_t { A1, B1, C1, D1, E1, F1, G1, H1,
@@ -58,12 +52,11 @@ typedef struct {
     piece pieceLookup[NUM_SQUARES];
 
     side playerToMove;
-    uint8_t castlingRights : 4; // inadequate on its own; helper function to compute castling rights needed
+    uint8_t castlingRights;
     square enPassantIndex; // square to which a pawn would be after capturing en passant (the one the mover jumped over)
     uint8_t fiftyMoveRule;
 } gameState_s;
 
-// ....
 
 void clear (int index, uint64_t* bitboard);
 void set(int index, uint64_t* bitboard);

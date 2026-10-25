@@ -8,6 +8,8 @@
 #include "move.h"
 #include "print.h"
 #include "events.h"
+#include "../test/performance/perf.h"
+#include "../test/logic/test.h"
 
 
 void inline set(const int index, uint64_t* bitboard) {
@@ -47,9 +49,16 @@ piece getPieceOnSquare(gameState_s* state, const square start, const square end)
 
 int main(int argc, char** argv) {
 
-    if (argc > 2) {
+    if (argc == 1) {}
+    else if (argc > 2) {
         printf("\n\n%s: enclose FEN in double quotes\n", argv[0]);
         exit(EXIT_FAILURE);
+    } else if(!strcmp(argv[1], "perf")) {
+        runPerformanceTests();
+        exit(EXIT_SUCCESS);
+    } else if(!strcmp(argv[1], "test")) {
+        runLogicTests();
+        exit(EXIT_SUCCESS);
     }
 
     gameState_s state;
@@ -61,7 +70,7 @@ int main(int argc, char** argv) {
 
     char startInput[3], endInput[3];
     char afterTurnMsg[16];
-
+    
     while(!gameIsOver(&state, &map)) {
 
         sprintf(afterTurnMsg, "%s to move:", state.playerToMove == white ? "White" : "Black");
@@ -99,4 +108,5 @@ int main(int argc, char** argv) {
 
     }
 
+    return 0;
 }

@@ -2,13 +2,11 @@
 #include <stdint.h>
 #include "main.h"
 #include "attackMaps.h"
-#include "print.h"
 
 
-int inline TZCNT(uint64_t src) {
-    uint64_t result;
-    __asm__("TZCNTQ %1, %0" : "=r"(result) : "r"(src));
-    return (int)result;
+int TZCNT(uint64_t src) { // TODO: make sure inlining accross files
+    __asm__("TZCNTQ %1, %0" : "+r"(src));
+    return (int)src;
 }
 
 
@@ -29,24 +27,24 @@ bool squareIsAttacked(gameState_s* restrict state, attackMap_s* restrict map, co
 
     const side opponent = state->playerToMove^1;
 
-    uint64_t opponentPawns = state->bitboard[opponent][pawn];
-    if(map->pawn[opponent][square] & opponentPawns)
-        return true;
-
     uint64_t opponentKnights = state->bitboard[opponent][knight];
     if(map->knight[square] & opponentKnights)
         return true;
 
-    uint64_t opponentBishops = state->bitboard[opponent][bishop];
-    if(bishopPseudoLegal(state, map, square) & opponentBishops)
+    uint64_t opponentQueens = state->bitboard[opponent][queen];
+    if (queenPseudoLegal(state, map, square) & opponentQueens)
         return true;
 
     uint64_t opponentRooks = state->bitboard[opponent][rook];
     if (rookPseudoLegal(state, map, square) & opponentRooks)
         return true;
 
-    uint64_t opponentQueens = state->bitboard[opponent][queen];
-    if (queenPseudoLegal(state, map, square) & opponentQueens)
+    uint64_t opponentBishops = state->bitboard[opponent][bishop];
+    if(bishopPseudoLegal(state, map, square) & opponentBishops)
+        return true;
+
+    uint64_t opponentPawns = state->bitboard[opponent][pawn];
+    if(map->pawn[opponent][square] & opponentPawns)
         return true;
 
     uint64_t opponentKing = state->bitboard[opponent][king];
@@ -134,14 +132,6 @@ void inline updateCastlingRights(gameState_s* restrict state, attackMap_s* restr
 uint64_t castlingBitboard(gameState_s* restrict state, attackMap_s* restrict map) {
     if (state->castlingRights == 0b0000) return 0;
 
-    /*
-    int ownRights;
-    if (state->playerToMove == white ? (ownRights = state->castlingRights & 0b0011) : (ownRights = state->castlingRights >> 2)) {
-        if(state->playerToMove == white ?
-    }
-    */
-
-    // maybe check if player to move has any rights, as to not check all this stuff when you cant castle anyway
     uint64_t bitboard = 0;
     if (state->playerToMove == white) { // if/else can removed, would require variable assignment. this should be faster and is clearer
         if(read(WHITE_OOO, state->castlingRights) && !(map->castlingPath[WHITE_OOO] & state->allPieces)) bitboard |= BIT(C1);
@@ -150,6 +140,7 @@ uint64_t castlingBitboard(gameState_s* restrict state, attackMap_s* restrict map
         if(read(BLACK_OOO, state->castlingRights) && !(map->castlingPath[BLACK_OOO] & state->allPieces)) bitboard |= BIT(C8);
         if(read(BLACK_OO,  state->castlingRights) && !(map->castlingPath[BLACK_OO]  & state->allPieces)) bitboard |= BIT(G8);
     }
+
     return bitboard;
 }
 
@@ -174,7 +165,7 @@ void simulateMovePawn(gameState_s* restrict state, attackMap_s* restrict map, co
     handleCapture(state, end);
 
     if (end == state->enPassantIndex) {
-        square opponentPawnIndex = state->playerToMove == white ? end + 8 : end - 8;
+        square opponentPawnIndex = state->playerToMove == white ? end + FILES : end - FILES;
         state->bitboard[state->playerToMove ^ 1][pawn] ^= BIT(opponentPawnIndex);
     }
 
@@ -220,7 +211,7 @@ bool pawnMoves(gameState_s* restrict state, attackMap_s* restrict map, const uin
     uint64_t targetSquares = state->piecesForSide[state->playerToMove ^ 1] | BIT(state->enPassantIndex);
     bool isAttacking = read(end, attackPseudoLegal & targetSquares);
 
-    uint64_t oneSquareForward = state->playerToMove == white ? BIT(start) << 8 : BIT(start) >> 8;
+    uint64_t oneSquareForward = state->playerToMove == white ? BIT(start) << FILES : BIT(start) >> FILES;
     bool canMoveOne = ANDN(oneSquareForward, state->allPieces);
 
     if (!canMoveOne && !isAttacking) // if you cant move one, you cant move two; no matter
@@ -231,12 +222,12 @@ bool pawnMoves(gameState_s* restrict state, attackMap_s* restrict map, const uin
         return moveIsLegal(state, map, move, &simulateMovePawn);
 
 
-    uint64_t twoSquaresForward = state->playerToMove == white ? BIT(start) << 16 : BIT(start) >> 16;
+    uint64_t twoSquaresForward = state->playerToMove == white ? BIT(start) << 2*FILES : BIT(start) >> 2*FILES;
     bool isFirstPawnMove = state->playerToMove == white ? start <= H2 : start >= A7;
     bool canAndIsMovingTwo = isFirstPawnMove && (twoSquaresForward == ANDN(BIT(end), state->allPieces));
 
     if (canAndIsMovingTwo) {
-        state->enPassantIndex = state->playerToMove == white ? start + 8 : start - 8; // move this to after moveIsLegal check
+        state->enPassantIndex = state->playerToMove == white ? start + FILES : start - FILES; // move this to after moveIsLegal check
         return moveIsLegal(state, map, move, &simulateMovePawn);
     }
 

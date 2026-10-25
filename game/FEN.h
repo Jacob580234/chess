@@ -5,7 +5,7 @@
 piece charToPiece(char c);
 bool isValidLetter(char c);
 bool isValidDigit(char c);
-bool kingIsValid(uint64_t bitboard);
+bool enemyKingIsSafe(gameState_s* state, attackMap_s* map);
 bool stateIsValid(gameState_s* state, attackMap_s* map);
 int strToInt(char* str);
 bool parsePosition(char* position, gameState_s* state);

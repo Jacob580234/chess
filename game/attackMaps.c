@@ -62,7 +62,7 @@ void initKingMaps(uint64_t bitboard[]) {
 
 
 void initKnightMaps(uint64_t bitboard[]) {
-    // beware of potential issues with shifting these (HFileMask >> x)
+
     const uint64_t AFileMask = 0xFEFEFEFEFEFEFEFE;
     const uint64_t HFileMask = 0x7F7F7F7F7F7F7F7F;
     const uint64_t source    = 0x0001422002214000; // attack map for knight @ index 31 (with file spill)
@@ -133,7 +133,7 @@ void initRookMaps(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextTab
             LEN_RIGHT(i) - 1,
             LEN_UP(i) - 1
         };
-        blockerMask[i] = generateSlidingPieceMoves(0ULL, i, len, incr);
+        blockerMask[i] = generateSlidingPieceMoves(0, i, len, incr);
         for (int j = 0; j < 4; j++) len[j]++;
         populatePextTable(pextTable, blockerMask, pextTableOffset, len, incr, i);
     }
@@ -151,7 +151,7 @@ void initBishopMaps(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextT
             MIN(LEN_DOWN(i), LEN_LEFT(i)) - 1,
             MIN(LEN_DOWN(i), LEN_RIGHT(i)) - 1
         };
-        blockerMask[i] = generateSlidingPieceMoves(0ULL, i, len, incr);
+        blockerMask[i] = generateSlidingPieceMoves(0, i, len, incr);
         for (int j = 0; j < 4; j++) len[j]++;
         populatePextTable(pextTable, blockerMask, pextTableOffset, len, incr, i);
     }
