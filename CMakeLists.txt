@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 4.0)
-project(chess_v2 C)
+project(chess C)
 
 set(CMAKE_C_STANDARD 17)
 
-add_executable(chess_v2 game/main.c
-        game/attackMaps.c
-        game/attackMaps.h
+add_executable(chess game/main.c
+        game/maps.c
+        game/maps.h
         game/print.c
         game/print.h
         game/FEN.c
@@ -20,4 +20,13 @@ add_executable(chess_v2 game/main.c
         test/performance/perf.c
         test/logic/test.c
         test/performance/perf.h
-        test/logic/test.h)
+        test/logic/test.h
+        engine/moveMaking.c
+        engine/moveMaking.h
+        asm.h
+        test/logic/moveGeneration/pawnMoveGenTest.c
+        test/logic/moveGeneration/pawnMoveGenTest.h
+        engine/search.c
+        engine/search.h
+        engine/evaluation.c
+        engine/evaluation.h)

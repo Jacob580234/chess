@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include "attackMaps.h"
+#include "maps.h"
 #include "main.h"
 #include "FEN.h"
 #include "move.h"
@@ -10,6 +10,18 @@
 #include "events.h"
 #include "../test/performance/perf.h"
 #include "../test/logic/test.h"
+#include <getopt.h>
+
+/*
+ *  add various asserts throughout code
+ *  add proper check checking (xray, pins etc...)
+ *  finish makeMove
+ *  undoMove
+ *  add compiler attributes where applicable
+ *  put static into array parameters: int arr[restrict static 4]
+ *  sse/avx: VPOPCNT, VPAND, VPOR, VPXOR, VPTERNLOG, VPSHUFBITQMB, PSHUFB, VPLZCNT (must reverse bits)
+ */
+
 
 
 void inline set(const int index, uint64_t* bitboard) {
@@ -35,7 +47,7 @@ square getIndexFromInput(char notation[]) {
 }
 
 
-piece getPieceOnSquare(gameState_s* state, const square start, const square end) {
+piece getPieceOnSquare(state_s* state, const square start, const square end) {
     if (start == invalid || end == invalid)
         return noPiece;
 
@@ -49,7 +61,7 @@ piece getPieceOnSquare(gameState_s* state, const square start, const square end)
 
 int main(int argc, char** argv) {
 
-    if (argc == 1) {}
+    if (argc == 1) {} // start game with default position
     else if (argc > 2) {
         printf("\n\n%s: enclose FEN in double quotes\n", argv[0]);
         exit(EXIT_FAILURE);
@@ -61,9 +73,9 @@ int main(int argc, char** argv) {
         exit(EXIT_SUCCESS);
     }
 
-    gameState_s state;
-    attackMap_s map;
-    initAttackMaps(&map);
+    state_s state;
+    map_s map;
+    initMaps(&map);
 
     char* FEN = (argc == 2 ? argv[1] : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     parseFEN(FEN, &state, &map);
@@ -88,7 +100,7 @@ int main(int argc, char** argv) {
         }
 
         uint16_t move = startSquare | endSquare << 6;
-        bool (*testMove)(gameState_s*, attackMap_s*, uint16_t);
+        bool (*testMove)(state_s*, map_s*, uint16_t);
         switch (piece) {
             case pawn:   testMove = &pawnMoves;   break;
             case knight: testMove = &knightMoves; break;

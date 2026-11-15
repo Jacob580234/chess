@@ -17,20 +17,17 @@ typedef struct {
 
     uint64_t castlingMask[NUM_SQUARES];
     uint64_t castlingPath[4];
-} attackMap_s;
+} map_s;
 
 #define RANK(src) ((src) / 8)
 #define FILE(src) ((src) % 8)
 
-void initAttackMaps(attackMap_s* attackMap);
+void initMaps(map_s* attackMap);
 void initKingMaps(uint64_t* bitboard);
 void initKnightMaps(uint64_t* bitboard);
 void initPawnMaps(uint64_t bitboard[][NUM_SQUARES]);
 void initRookMaps(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextOffset[]);
 void initBishopMaps(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextOffset[]);
-uint64_t PEXT(uint64_t mask, uint64_t src);
-uint64_t PDEP(uint64_t mask, uint64_t src);
-int POPCNT(uint64_t src);
 uint64_t generateSlidingPieceMoves(uint64_t blockers, int square, int len[], int incr[]);
 void populatePextTable(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextTableOffset[], int len[], int incr[], int square);
 void initCastlingMaps(uint64_t mask[], uint64_t path[]);

@@ -6,9 +6,9 @@
 void printBinary(uint64_t num);
 void printPieceLookup(piece* pieceLookup);
 void printBitboard(uint64_t bitboard);
-void printState(gameState_s* state);
-char pieceToChar(square square, gameState_s* state);
-void printBoard(gameState_s* state);
+void printState(state_s* state);
+char pieceToChar(square square, state_s* state);
+void printBoard(state_s* state);
 char* pieceToStr(piece piece);
 
 #endif //CHESS_V2_PRINT_H

@@ -30,6 +30,7 @@ void printBitboard(uint64_t bitboard) {
             printf("%llu  ", bitboard >> (i * 8 - (8 - j)) & 1);
         }
     }
+    printf("\n");
 }
 
 
@@ -46,7 +47,7 @@ char* pieceToStr(piece piece) {
 }
 
 
-void printState(gameState_s* state) {
+void printState(state_s* state) {
     for (piece piece = pawn; piece <= king; piece++) {
         printf("\n\nWhite %s:", pieceToStr(piece));
         printBitboard(state->bitboard[white][piece]);
@@ -66,7 +67,7 @@ void printState(gameState_s* state) {
 }
 
 
-void printBoard(gameState_s* state) { // TODO: rework this abomination
+void printBoard(state_s* state) { // TODO: rework this abomination
 
     const int nextFile = state->playerToMove      == white ? -15 : 15;
     const int fileSkip = state->playerToMove      == white ?   7 :  0;
@@ -93,7 +94,7 @@ void printBoard(gameState_s* state) { // TODO: rework this abomination
 }
 
 
-char pieceToChar(square square, gameState_s* state) { // this as well
+char pieceToChar(square square, state_s* state) { // this as well
     switch (state->pieceLookup[square]) {
         case pawn:    return BIT(square) & state->bitboard[white][pawn]   ? 'P' : 'p';
         case knight:  return BIT(square) & state->bitboard[white][knight] ? 'N' : 'n';

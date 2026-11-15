@@ -1,92 +1,67 @@
 #include "move.h"
 #include <stdint.h>
+#include <stdio.h>
+
 #include "main.h"
-#include "attackMaps.h"
+#include "maps.h"
+#include "../asm.h"
 
 
-int TZCNT(uint64_t src) { // TODO: make sure inlining accross files
-    __asm__("TZCNTQ %1, %0" : "+r"(src));
-    return (int)src;
-}
-
-
-uint64_t inline ANDN(uint64_t op1, uint64_t op2Neg) {
-    uint64_t result;
-    __asm__("ANDNQ %1, %2, %0" : "=r"(result) : "r"(op1), "r"(op2Neg));
-    return result;
-}
-
-
-square inline getKingIndex(gameState_s* state) {
+square inline getKingIndex(state_s* state) {
     return TZCNT(state->bitboard[state->playerToMove][king]);
 }
 
-// which pieces usually check the king? put them first for optimal short-circuiting
+
 // maybe do one of these per game phase since rooks probably check more in endgame etc
-bool squareIsAttacked(gameState_s* restrict state, attackMap_s* restrict map, const square square) {
+bool squareIsAttacked(state_s* restrict state, map_s* restrict map, const square square) {
 
     const side opponent = state->playerToMove^1;
 
-    uint64_t opponentKnights = state->bitboard[opponent][knight];
-    if(map->knight[square] & opponentKnights)
+    if(map->knight[square] & state->bitboard[opponent][knight]                   ||
+       queenPseudoLegal(state, map, square) & state->bitboard[opponent][queen]   ||
+       rookPseudoLegal(state, map, square) & state->bitboard[opponent][rook]     ||
+       bishopPseudoLegal(state, map, square) & state->bitboard[opponent][bishop] ||
+       map->pawn[opponent][square] & state->bitboard[opponent][pawn]             ||
+       map->king[square] & state->bitboard[opponent][king]) {
         return true;
-
-    uint64_t opponentQueens = state->bitboard[opponent][queen];
-    if (queenPseudoLegal(state, map, square) & opponentQueens)
-        return true;
-
-    uint64_t opponentRooks = state->bitboard[opponent][rook];
-    if (rookPseudoLegal(state, map, square) & opponentRooks)
-        return true;
-
-    uint64_t opponentBishops = state->bitboard[opponent][bishop];
-    if(bishopPseudoLegal(state, map, square) & opponentBishops)
-        return true;
-
-    uint64_t opponentPawns = state->bitboard[opponent][pawn];
-    if(map->pawn[opponent][square] & opponentPawns)
-        return true;
-
-    uint64_t opponentKing = state->bitboard[opponent][king];
-    if (map->king[square] & opponentKing)
-        return true;
+    }
 
     return false;
 }
 
 
-bool inline kingIsInCheck(gameState_s* restrict state, attackMap_s* restrict map) {
+bool inline kingIsInCheck(state_s* restrict state, map_s* restrict map) {
     square kingIndex = getKingIndex(state);
     return squareIsAttacked(state, map, kingIndex);
 }
 
 
-uint64_t inline knightPseudoLegal(gameState_s* restrict state, attackMap_s* restrict map, const square start) {
-    return ANDN(map->knight[start], state->piecesForSide[state->playerToMove]);
+uint64_t inline knightPseudoLegal(state_s* restrict state, map_s* restrict map, const square start) {
+    return ANDN(state->piecesForSide[state->playerToMove], map->knight[start]);
 }
 
-uint64_t inline kingPseudoLegal(gameState_s* restrict state, attackMap_s* restrict map, const square start) {
-    return ANDN(map->king[start],state->piecesForSide[state->playerToMove]);
+uint64_t inline kingPseudoLegal(state_s* restrict state, map_s* restrict map, const square start) {
+    return ANDN(state->piecesForSide[state->playerToMove], map->king[start]);
 }
 
-uint64_t inline rookPseudoLegal(gameState_s* restrict state, attackMap_s* restrict map, const square start) {
-    uint32_t index = map->rookPextTableOffset[start] + PEXT(map->rookBlockerMask[start], state->allPieces);
-    return ANDN(map->rookPextTable[index], state->piecesForSide[state->playerToMove]);
+uint64_t inline rookPseudoLegal(state_s* restrict state, map_s* restrict map, const square start) {
+    uint32_t index = map->rookPextTableOffset[start] + PEXT(state->allPieces, map->rookBlockerMask[start]);
+    return ANDN(state->piecesForSide[state->playerToMove], map->rookPextTable[index]);
 }
 
-uint64_t inline bishopPseudoLegal(gameState_s* restrict state, attackMap_s* restrict map, const square start) {
-    uint32_t index = map->bishopPextTableOffset[start] + PEXT(map->bishopBlockerMask[start], state->allPieces);
-    return ANDN(map->bishopPextTable[index], state->piecesForSide[state->playerToMove]);
+uint64_t inline bishopPseudoLegal(state_s* restrict state, map_s* restrict map, const square start) {
+    uint32_t index = map->bishopPextTableOffset[start] + PEXT(state->allPieces, map->bishopBlockerMask[start]);
+    return ANDN(state->piecesForSide[state->playerToMove], map->bishopPextTable[index]);
 }
 
-uint64_t inline queenPseudoLegal(gameState_s* restrict state, attackMap_s* restrict map, const square start) {
+uint64_t inline queenPseudoLegal(state_s* restrict state, map_s* restrict map, const square start) {
     return bishopPseudoLegal(state, map, start) | rookPseudoLegal(state, map, start);
 }
 
+// typedef function pointers
+bool moveIsLegal(state_s* restrict state, map_s* restrict map, const uint16_t move, void (*simulateMove)(state_s*, map_s*, uint16_t)) {
 
-bool moveIsLegal(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move, void (*simulateMove)(gameState_s*, attackMap_s*, uint16_t)) {
-
-    gameState_s afterMoveState = *state;
+    state_s afterMoveState = *state;
     simulateMove(&afterMoveState, map, move);
 
     if (kingIsInCheck(&afterMoveState, map)) {
@@ -97,7 +72,7 @@ bool moveIsLegal(gameState_s* restrict state, attackMap_s* restrict map, const u
 }
 
 
-void updatePiecePosition(gameState_s* state, uint16_t move) {
+void updatePiecePosition(state_s* state, uint16_t move) {
 
     const square origin = START(move);
     const square target = END(move);
@@ -112,7 +87,7 @@ void updatePiecePosition(gameState_s* state, uint16_t move) {
 }
 
 
-void inline handleCapture(gameState_s* state, const square end) {
+void inline handleCapture(state_s* state, const square end) {
     uint64_t endBitboard = BIT(end);
     if (endBitboard & state->piecesForSide[state->playerToMove^1]) {
         piece opponentPiece = state->pieceLookup[end];
@@ -123,13 +98,13 @@ void inline handleCapture(gameState_s* state, const square end) {
 }
 
 
-void inline updateCastlingRights(gameState_s* restrict state, attackMap_s* restrict map, const square start, const square end) {
+void inline updateCastlingRights(state_s* restrict state, map_s* restrict map, const square start, const square end) {
     if (state->castlingRights != 0b0000)
-        state->castlingRights &= map->castlingMask[start] | map->castlingMask[end];
+        state->castlingRights &= map->castlingMask[start] & map->castlingMask[end];
 }
 
 
-uint64_t castlingBitboard(gameState_s* restrict state, attackMap_s* restrict map) {
+uint64_t castlingBitboard(state_s* restrict state, map_s* restrict map) {
     if (state->castlingRights == 0b0000) return 0;
 
     uint64_t bitboard = 0;
@@ -146,7 +121,7 @@ uint64_t castlingBitboard(gameState_s* restrict state, attackMap_s* restrict map
 
 
 // separate functions for castling and en passant moves? and perhaps promotion?
-void simulateMoveGeneral(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move) {
+void simulateMoveGeneral(state_s* restrict state, map_s* restrict map, const uint16_t move) {
 
     const square start = START(move);
     const square end = END(move);
@@ -156,7 +131,7 @@ void simulateMoveGeneral(gameState_s* restrict state, attackMap_s* restrict map,
 }
 
 
-void simulateMovePawn(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move) {
+void simulateMovePawn(state_s* restrict state, map_s* restrict map, const uint16_t move) {
 
     const square start = START(move);
     const square end = END(move);
@@ -173,15 +148,7 @@ void simulateMovePawn(gameState_s* restrict state, attackMap_s* restrict map, co
 }
 
 
-void makeMove(gameState_s* state, uint16_t move) {
-    const square end = END(move);
-    updatePiecePosition(state, move);
-    handleCapture(state, end);
-    state->allPieces = state->piecesForSide[white] | state->piecesForSide[black];
-}
-
-
-void simulateMoveKing(gameState_s* restrict state, attackMap_s* restrict map, uint16_t move) {
+void simulateMoveKing(state_s* restrict state, map_s* restrict map, uint16_t move) {
     const square start = START(move);
     const square end = END(move);
 
@@ -202,7 +169,7 @@ void simulateMoveKing(gameState_s* restrict state, attackMap_s* restrict map, ui
 }
 
 
-bool pawnMoves(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move) {
+bool pawnMoves(state_s* restrict state, map_s* restrict map, const uint16_t move) {
 
     const square start = START(move);
     const square end = END(move);
@@ -212,7 +179,7 @@ bool pawnMoves(gameState_s* restrict state, attackMap_s* restrict map, const uin
     bool isAttacking = read(end, attackPseudoLegal & targetSquares);
 
     uint64_t oneSquareForward = state->playerToMove == white ? BIT(start) << FILES : BIT(start) >> FILES;
-    bool canMoveOne = ANDN(oneSquareForward, state->allPieces);
+    bool canMoveOne = ANDN(state->allPieces, oneSquareForward);
 
     if (!canMoveOne && !isAttacking) // if you cant move one, you cant move two; no matter
         return false;
@@ -224,7 +191,7 @@ bool pawnMoves(gameState_s* restrict state, attackMap_s* restrict map, const uin
 
     uint64_t twoSquaresForward = state->playerToMove == white ? BIT(start) << 2*FILES : BIT(start) >> 2*FILES;
     bool isFirstPawnMove = state->playerToMove == white ? start <= H2 : start >= A7;
-    bool canAndIsMovingTwo = isFirstPawnMove && (twoSquaresForward == ANDN(BIT(end), state->allPieces));
+    bool canAndIsMovingTwo = isFirstPawnMove && (twoSquaresForward == ANDN(state->allPieces, BIT(end)));
 
     if (canAndIsMovingTwo) {
         state->enPassantIndex = state->playerToMove == white ? start + FILES : start - FILES; // move this to after moveIsLegal check
@@ -235,7 +202,7 @@ bool pawnMoves(gameState_s* restrict state, attackMap_s* restrict map, const uin
 }
 
 
-bool knightMoves(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move) {
+bool knightMoves(state_s* restrict state, map_s* restrict map, const uint16_t move) {
     const square start = START(move);
     const square end = END(move);
     uint64_t pseudoLegal = knightPseudoLegal(state, map, start);
@@ -244,7 +211,7 @@ bool knightMoves(gameState_s* restrict state, attackMap_s* restrict map, const u
 }
 
 
-bool kingMoves(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move) {
+bool kingMoves(state_s* restrict state, map_s* restrict map, const uint16_t move) {
     const square start = START(move);
     const square end = END(move);
 
@@ -257,7 +224,7 @@ bool kingMoves(gameState_s* restrict state, attackMap_s* restrict map, const uin
 }
 
 
-bool rookMoves(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move) {
+bool rookMoves(state_s* restrict state, map_s* restrict map, const uint16_t move) {
     const square start = START(move);
     const square end = END(move);
     uint64_t pseudoLegal = rookPseudoLegal(state, map, start);
@@ -266,7 +233,7 @@ bool rookMoves(gameState_s* restrict state, attackMap_s* restrict map, const uin
 }
 
 
-bool bishopMoves(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move) {
+bool bishopMoves(state_s* restrict state, map_s* restrict map, const uint16_t move) {
     const square start = START(move);
     const square end = END(move);
     uint64_t pseudoLegal = bishopPseudoLegal(state, map, start);
@@ -275,7 +242,7 @@ bool bishopMoves(gameState_s* restrict state, attackMap_s* restrict map, const u
 }
 
 
-bool queenMoves(gameState_s* restrict state, attackMap_s* restrict map, const uint16_t move) {
+bool queenMoves(state_s* restrict state, map_s* restrict map, const uint16_t move) {
     const square start = START(move);
     const square end = END(move);
     uint64_t pseudoLegal = queenPseudoLegal(state, map, start);

@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "move.h"
+#include "../asm.h"
+#include "print.h"
 
 piece inline charToPiece(char c) {
     switch(c) {
@@ -27,15 +29,15 @@ bool inline isValidDigit(char c) {
 }
 
 
-bool inline enemyKingIsSafe(gameState_s* restrict state, attackMap_s* restrict map) {
-    gameState_s opponentState = *state;
+bool inline enemyKingIsSafe(state_s* restrict state, map_s* restrict map) {
+    state_s opponentState = *state;
     opponentState.playerToMove ^= 1;
     bool enemyKingIsSafe = !kingIsInCheck(&opponentState, map);
     return enemyKingIsSafe;
 }
 
 
-bool stateIsValid(gameState_s* restrict state, attackMap_s* restrict map) {
+bool stateIsValid(state_s* restrict state, map_s* restrict map) {
 
     if (POPCNT(state->bitboard[white][king]) != 1) return false;
     if (POPCNT(state->bitboard[black][king]) != 1) return false;
@@ -44,6 +46,13 @@ bool stateIsValid(gameState_s* restrict state, attackMap_s* restrict map) {
 
     bool whiteKingMoved = TZCNT(state->bitboard[white][king]) != E1;
     bool blackKingMoved = TZCNT(state->bitboard[black][king]) != E8;
+
+    /*
+    if(state->enPassantIndex != invalid &&
+      (state->playerToMove == black && (state->enPassantIndex < A3 || state->enPassantIndex > H3) ||
+       state->playerToMove == white && (state->enPassantIndex < A6 || state->enPassantIndex > H6)))
+        return false;
+    */
 
     if(state->castlingRights & BIT(WHITE_OOO) && (!(state->bitboard[white][rook] & BIT(A1)) || whiteKingMoved)) return false;
     if(state->castlingRights & BIT(WHITE_OO)  && (!(state->bitboard[white][rook] & BIT(H1)) || whiteKingMoved)) return false;
@@ -65,7 +74,7 @@ int inline strToInt(char* str) { // atoi not adequate: must return error value o
 }
 
 
-bool parsePosition(char* restrict position, gameState_s* restrict state) {
+bool parsePosition(char* restrict position, state_s* restrict state) {
 
     memset(state->bitboard, 0, sizeof(state->bitboard) + sizeof(state->piecesForSide) + sizeof(state->allPieces)); // clear bitboards
     for (square square = A1; square <= H8; square++)
@@ -94,7 +103,7 @@ bool parsePosition(char* restrict position, gameState_s* restrict state) {
 }
 
 
-bool inline parseTurn(const char turn, gameState_s* state) {
+bool inline parseTurn(const char turn, state_s* state) {
     if      (turn == 'w') state->playerToMove = white;
     else if (turn == 'b') state->playerToMove = black;
     else return false;
@@ -102,7 +111,7 @@ bool inline parseTurn(const char turn, gameState_s* state) {
 }
 
 
-bool inline parseCastling(char* restrict castling, gameState_s* restrict state) {
+bool inline parseCastling(char* restrict castling, state_s* restrict state) {
     state->castlingRights = 0b0000;
     if (*castling == '-') return true;
     for(;*castling; castling++) {
@@ -118,20 +127,20 @@ bool inline parseCastling(char* restrict castling, gameState_s* restrict state) 
 }
 
 
-bool inline parseEnPassant(char* restrict enPassant, gameState_s* restrict state) {
+bool inline parseEnPassant(char* restrict enPassant, state_s* restrict state) {
     if (*enPassant == '-') state->enPassantIndex = invalid;
     else if ((state->enPassantIndex = getIndexFromInput(enPassant)) == invalid) return false;
     return true;
 }
 
 
-bool inline parseHalfMoves(char* restrict halfMoves, gameState_s* restrict state) {
+bool inline parseHalfMoves(char* restrict halfMoves, state_s* restrict state) {
     if ((int)(state->fiftyMoveRule = strToInt(halfMoves)) == -1) return false;
     return true;
 }
 
 
-void parseFEN(char* restrict FEN, gameState_s* restrict state, attackMap_s* restrict map) {
+void parseFEN(char* restrict FEN, state_s* restrict state, map_s* restrict map) {
 
     char position[72], turn, castling[5], enPassant[3], halfMoves[4], fullMoves[5]; // fullMoves unused atp
     int parsedCount = sscanf(FEN, "%s %c %s %s %s %s", position, &turn, castling, enPassant, halfMoves, fullMoves);

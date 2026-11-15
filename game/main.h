@@ -13,11 +13,13 @@
 #define START(move) ((move) & 0b111111)
 #define END(move) ((move) >> 6 & 0b111111)
 
+#define QUIET            0b0000000000000000
+
 #define DOUBLE_PAWN_PUSH 0b0001000000000000
 #define KING_CASTLE      0b0010000000000000
 #define QUEEN_CASTLE     0b0011000000000000
 #define CAPTURE          0b0100000000000000
-#define EP_CAPTURE       0b0101000000000000
+#define EN_PASSANT       0b0101000000000000
 
 #define KNIGHT_PROMO     0b1000000000000000
 #define BISHOP_PROMO     0b1001000000000000
@@ -46,16 +48,19 @@ typedef enum: uint8_t { A1, B1, C1, D1, E1, F1, G1, H1,
                         invalid                         } square;
 
 typedef struct {
+    uint8_t castlingRights;
+    uint8_t fiftyMoveRule;
+    square enPassantIndex;
+    piece capturedPiece;
+
     uint64_t bitboard[2][NUM_PIECE_TYPES];
     uint64_t piecesForSide[2];
     uint64_t allPieces;
     piece pieceLookup[NUM_SQUARES];
 
     side playerToMove;
-    uint8_t castlingRights;
-    square enPassantIndex; // square to which a pawn would be after capturing en passant (the one the mover jumped over)
-    uint8_t fiftyMoveRule;
-} gameState_s;
+    struct gameState* previous;
+} state_s;
 
 
 void clear (int index, uint64_t* bitboard);

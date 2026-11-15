@@ -1,32 +1,12 @@
 #include <stdint.h>
 #include "main.h"
-#include "attackMaps.h"
+#include "maps.h"
 #include "move.h"
 #include <string.h>
+#include "../asm.h"
 
 
-uint64_t inline PEXT(uint64_t mask, uint64_t src) {
-    uint64_t result;
-    __asm__("PEXTQ %1, %2, %0" : "=r"(result) : "r"(mask), "r"(src) : "cc");
-    return result;
-}
-
-
-uint64_t inline PDEP(uint64_t mask, uint64_t src) {
-    uint64_t result;
-    __asm__("PDEPQ %1, %2, %0" : "=r"(result) : "r"(mask), "r"(src) : "cc");
-    return result;
-}
-
-
-int inline POPCNT(uint64_t src) {
-    uint64_t result;
-    __asm__("POPCNTQ %1, %0" : "=r"(result) : "r"(src) : "cc");
-    return (int)result;
-}
-
-
-void initAttackMaps(attackMap_s* attackMap) {
+void initMaps(map_s* attackMap) {
     initPawnMaps(attackMap->pawn);
     initKnightMaps(attackMap->knight);
     initKingMaps(attackMap->king);
@@ -167,7 +147,7 @@ void populatePextTable(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pe
         pextTableOffset[square+1] = (pextTableOffset[square] + blockerCombinations);
 
     for (int j = 0; j < blockerCombinations; j++) {
-        uint64_t blockers = PDEP(blockerMask[square], j);
+        uint64_t blockers = PDEP(j, blockerMask[square]);
         pextTable[j + pextTableOffset[square]] = generateSlidingPieceMoves(blockers, square, len, incr);
     }
 }
