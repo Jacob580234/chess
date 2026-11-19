@@ -1,5 +1,5 @@
-#ifndef CHESS_V2_MOVE_H
-#define CHESS_V2_MOVE_H
+#pragma once
+
 #include "maps.h"
 #include "main.h"
 
@@ -33,5 +33,3 @@ uint64_t kingPseudoLegal(state_s* state, map_s* map, square start);
 
 void handleCapture(state_s* state, square end);
 void updatePiecePosition(state_s* state, uint16_t move);
-
-#endif //CHESS_V2_MOVE_H

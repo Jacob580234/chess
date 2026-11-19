@@ -1,4 +1,1 @@
-#ifndef CHESS_EVALUATION_H
-#define CHESS_EVALUATION_H
-
-#endif //CHESS_EVALUATION_H
+#pragma once

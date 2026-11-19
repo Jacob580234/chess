@@ -1,5 +1,5 @@
-#ifndef CHESS_V2_BITBOARDDATABASE_H
-#define CHESS_V2_BITBOARDDATABASE_H
+#pragma once
+
 #include "main.h"
 
 typedef struct {
@@ -31,5 +31,3 @@ void initBishopMaps(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextO
 uint64_t generateSlidingPieceMoves(uint64_t blockers, int square, int len[], int incr[]);
 void populatePextTable(uint64_t pextTable[], uint64_t blockerMask[], uint32_t pextTableOffset[], int len[], int incr[], int square);
 void initCastlingMaps(uint64_t mask[], uint64_t path[]);
-
-#endif //CHESS_V2_BITBOARDDATABASE_H

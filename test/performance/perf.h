@@ -1,5 +1,4 @@
-#ifndef CHESS_V2_PERF_H
-#define CHESS_V2_PERF_H
+#pragma once
 
 static int testCount;
 
@@ -19,5 +18,3 @@ static int testCount;
 
 void moveGeneration(char* FEN);
 void runPerformanceTests();
-
-#endif //CHESS_V2_PERF_H

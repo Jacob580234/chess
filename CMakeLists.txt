@@ -29,4 +29,6 @@ add_executable(chess game/main.c
         engine/search.c
         engine/search.h
         engine/evaluation.c
-        engine/evaluation.h)
+        engine/evaluation.h
+        test/logic/moveGeneration/kingMoveGenTest.c
+        test/logic/moveGeneration/kingMoveGenTest.h)

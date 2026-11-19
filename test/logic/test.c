@@ -4,10 +4,10 @@
 #include "../../game/maps.h"
 
 int failCount = 0;
-map_s map;
+map_s testMap;
 
 void runLogicTests() {
-    initMaps(&map);
+    initMaps(&testMap);
     runPawnMoveGenTests();
 
     failCount ? printf("\n%d test(s) failed\n", failCount) : printf("All tests passed\n");
@@ -15,7 +15,7 @@ void runLogicTests() {
 
 
 void runPawnMoveGenTests() {
-    whitePawnPushGenSIMD_addsMovesCorrectly(); // add ifdef's to make this compile without avx support
+    whitePawnPushGen_addsMovesCorrectly(); // must disable march=native flag to test sequential implementation; not ideal
     pawnPromotionGen_addsMovesCorrectly();
     pawnCaptureGen_addsMovesCorrectly();
     pawnPromotionCaptureGen_addsMovesCorrectly();

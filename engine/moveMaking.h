@@ -1,6 +1,1 @@
-#ifndef CHESS_V2_MOVEMAKING_H
-#define CHESS_V2_MOVEMAKING_H
-
-
-
-#endif //CHESS_V2_MOVEMAKING_H
+#pragma once

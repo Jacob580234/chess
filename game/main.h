@@ -1,5 +1,4 @@
-#ifndef CHESS_V2_MAIN_H
-#define CHESS_V2_MAIN_H
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -67,6 +66,3 @@ void clear (int index, uint64_t* bitboard);
 void set(int index, uint64_t* bitboard);
 bool read(int index, uint64_t bitboard);
 square getIndexFromInput(char notation[]);
-
-
-#endif //CHESS_V2_MAIN_H

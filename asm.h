@@ -1,5 +1,5 @@
-#ifndef CHESS_V2_ASM_H
-#define CHESS_V2_ASM_H
+#pragma once
+
 #include <stdint.h>
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -116,6 +116,3 @@ ALWAYS_INLINE uint64_t PDEP(uint64_t src, uint64_t mask) {
         return c;
     #endif
 }
-
-
-#endif //CHESS_V2_ASM_H

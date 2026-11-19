@@ -1,5 +1,5 @@
-#ifndef CHESS_V2_PRINT_H
-#define CHESS_V2_PRINT_H
+#pragma once
+
 #include "main.h"
 #include <stdio.h>
 
@@ -10,5 +10,3 @@ void printState(state_s* state);
 char pieceToChar(square square, state_s* state);
 void printBoard(state_s* state);
 char* pieceToStr(piece piece);
-
-#endif //CHESS_V2_PRINT_H

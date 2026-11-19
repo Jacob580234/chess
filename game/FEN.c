@@ -29,38 +29,44 @@ bool inline isValidDigit(char c) {
 }
 
 
-bool inline enemyKingIsSafe(state_s* restrict state, map_s* restrict map) {
+bool inline otherKingIsInCheck(state_s* restrict state, map_s* restrict map) {
     state_s opponentState = *state;
     opponentState.playerToMove ^= 1;
-    bool enemyKingIsSafe = !kingIsInCheck(&opponentState, map);
-    return enemyKingIsSafe;
+    return kingIsInCheck(&opponentState, map);
 }
 
 
-bool stateIsValid(state_s* restrict state, map_s* restrict map) {
+char* stateIsValid(state_s* restrict state, map_s* restrict map) {
 
-    if (POPCNT(state->bitboard[white][king]) != 1) return false;
-    if (POPCNT(state->bitboard[black][king]) != 1) return false;
+    if (POPCNT(state->bitboard[white][king]) != 1 || POPCNT(state->bitboard[black][king]) != 1)
+        return "Illegal amount of kings";
 
-    if((state->bitboard[black][pawn] | state->bitboard[white][pawn]) & 0xFF000000000000FF) return false;
+    if((state->bitboard[black][pawn] | state->bitboard[white][pawn]) & 0xFF000000000000FF)
+        return "Pawn on illegal index";
+
+    if(state->enPassantIndex != invalid) {
+        if((state->playerToMove == black && (state->enPassantIndex < A3 || state->enPassantIndex > H3)) ||
+           (state->playerToMove == white && (state->enPassantIndex < A6 || state->enPassantIndex > H6)))
+            return "Invalid en passant square";
+
+        if((state->pieceLookup[state->enPassantIndex] != noPiece)                                             ||
+           (state->playerToMove == black && !(state->bitboard[white][pawn] & BIT(state->enPassantIndex + 8))) ||
+           (state->playerToMove == white && !(state->bitboard[black][pawn] & BIT(state->enPassantIndex - 8))))
+            return "En passant square and position do not concur";
+    }
 
     bool whiteKingMoved = TZCNT(state->bitboard[white][king]) != E1;
     bool blackKingMoved = TZCNT(state->bitboard[black][king]) != E8;
+    if((state->castlingRights & BIT(WHITE_OOO) && (!(state->bitboard[white][rook] & BIT(A1)) || whiteKingMoved)) ||
+       (state->castlingRights & BIT(WHITE_OO)  && (!(state->bitboard[white][rook] & BIT(H1)) || whiteKingMoved)) ||
+       (state->castlingRights & BIT(BLACK_OOO) && (!(state->bitboard[black][rook] & BIT(A8)) || blackKingMoved)) ||
+       (state->castlingRights & BIT(BLACK_OO)  && (!(state->bitboard[black][rook] & BIT(H8)) || blackKingMoved))) // horrible parenthesization
+        return "Castling rights and position do not concur";
 
-    /*
-    if(state->enPassantIndex != invalid &&
-      (state->playerToMove == black && (state->enPassantIndex < A3 || state->enPassantIndex > H3) ||
-       state->playerToMove == white && (state->enPassantIndex < A6 || state->enPassantIndex > H6)))
-        return false;
-    */
+    if(otherKingIsInCheck(state, map))
+        return "Player to move may not have other king in check";
 
-    if(state->castlingRights & BIT(WHITE_OOO) && (!(state->bitboard[white][rook] & BIT(A1)) || whiteKingMoved)) return false;
-    if(state->castlingRights & BIT(WHITE_OO)  && (!(state->bitboard[white][rook] & BIT(H1)) || whiteKingMoved)) return false;
-
-    if(state->castlingRights & BIT(BLACK_OOO) && (!(state->bitboard[black][rook] & BIT(A8)) || blackKingMoved)) return false;
-    if(state->castlingRights & BIT(BLACK_OO)  && (!(state->bitboard[black][rook] & BIT(H8)) || blackKingMoved)) return false;
-
-    return enemyKingIsSafe(state, map); // player not to move may not have their king in check
+    return NULL;
 }
 
 
@@ -155,8 +161,9 @@ void parseFEN(char* restrict FEN, state_s* restrict state, map_s* restrict map) 
         exit(EXIT_FAILURE);
     }
 
-    if(!stateIsValid(state, map)) {
-        printf("Illegal position\n");
+    char* validity = stateIsValid(state, map);
+    if (validity != NULL) {
+        printf("%s\n", validity);
         exit(EXIT_FAILURE);
     }
 }

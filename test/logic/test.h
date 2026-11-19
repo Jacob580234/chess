@@ -1,10 +1,9 @@
-#ifndef CHESS_V2_TEST_H
-#define CHESS_V2_TEST_H
+#pragma once
 
 #include "../../game/maps.h"
 
 extern int failCount;
-extern map_s map;
+extern map_s testMap;
 
 #define ASSERT(exp)      \
     do {                 \
@@ -16,4 +15,3 @@ extern map_s map;
 
 void runLogicTests();
 void runPawnMoveGenTests();
-#endif //CHESS_V2_TEST_H

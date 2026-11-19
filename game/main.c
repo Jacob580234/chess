@@ -22,8 +22,6 @@
  *  sse/avx: VPOPCNT, VPAND, VPOR, VPXOR, VPTERNLOG, VPSHUFBITQMB, PSHUFB, VPLZCNT (must reverse bits)
  */
 
-
-
 void inline set(const int index, uint64_t* bitboard) {
     *bitboard |= BIT(index);
 }
@@ -77,7 +75,7 @@ int main(int argc, char** argv) {
     map_s map;
     initMaps(&map);
 
-    char* FEN = (argc == 2 ? argv[1] : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    char* FEN = (argc == 2 ? argv[1] : "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
     parseFEN(FEN, &state, &map);
 
     char startInput[3], endInput[3];
